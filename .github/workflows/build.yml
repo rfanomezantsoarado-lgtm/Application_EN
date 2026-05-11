@@ -37,3 +37,10 @@ jobs:
       - name: Build APK
         run: |
           yes | buildozer -v android debug
+
+      # ⬇️⬇️⬇️ AJOUTEZ CES 5 LIGNES ⬇️⬇️⬇️
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mon-apk
+          path: bin/*.apk

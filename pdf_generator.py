@@ -4,8 +4,10 @@ import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm, cm
+#from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+#                                Table, TableStyle, HRFlowable)
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
-                                Table, TableStyle, HRFlowable)
+                                Table, TableStyle)
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
@@ -152,7 +154,7 @@ def generer_pdf_facture(commande_id, client_nom, client_info,
         story.append(header_table)
 
         story.append(Spacer(1, 3*mm))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey))
+       # story.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey))
         story.append(Spacer(1, 3*mm))
 
         # INFOS CLIENT
@@ -256,7 +258,7 @@ def generer_pdf_facture(commande_id, client_nom, client_info,
                                                  spaceAfter=0)))
 
         story.append(Spacer(1, 3*mm))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.black))
+       # story.append(HRFlowable(width="100%", thickness=0.5, color=colors.black))
         story.append(Spacer(1, 3*mm))
 
         # SECTION SIGNATURE

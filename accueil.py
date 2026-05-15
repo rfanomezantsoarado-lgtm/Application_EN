@@ -1,201 +1,283 @@
+#Importation des bibliothèques utiles
 from kivy.uix.screenmanager import Screen
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.button import Button
-from kivy.uix.dropdown import DropDown
 from kivy.uix.boxlayout import BoxLayout
-from kivy.graphics import Color, RoundedRectangle, Rectangle
+from kivy.graphics import Color, Rectangle, RoundedRectangle
+from kivy.animation import Animation
+from kivy.core.window import Window
+from kivy.app import App
 
 
+# Largeur du menu
 MENU_WIDTH = 280
 
 
-class MenuItemButton(BoxLayout):
-    """
-    Item de menu : fond coloré + icône à gauche + texte à droite.
-    Hérite de BoxLayout pour que le DropDown accepte size_hint_y=None / height.
-    """
-    def __init__(self, texte, icone, callback, **kwargs):
+# ===================================================
+# ITEM MENU (ICONE + TEXTE)
+# ===================================================
+class MenuItem(BoxLayout):
+
+    def __init__(self, text, icon, callback, **kwargs):
         super().__init__(
             orientation="horizontal",
-            spacing=14,
-            padding=[16, 0, 10, 0],
             size_hint_y=None,
-            height=56,
+            height=55,
+            spacing=15,
+            padding=[20, 0, 10, 0],
             **kwargs
         )
 
-        # Fond sombre
+        self.callback = callback
+
         with self.canvas.before:
-            Color(0.07, 0.10, 0.22, 0.5)
-            self._bg = Rectangle(pos=self.pos, size=self.size)
+            Color(0.07, 0.10, 0.22, 0.8)  # Plus transparent
+            self.bg = RoundedRectangle(pos=self.pos, size=self.size, radius=[10])
+
         self.bind(
-            pos=lambda inst, v: setattr(self._bg, 'pos', v),
-            size=lambda inst, v: setattr(self._bg, 'size', v)
+            pos=lambda i, v: setattr(self.bg, "pos", v),
+            size=lambda i, v: setattr(self.bg, "size", v)
         )
 
-        # Icône
-        icon = Image(
-            source=icone,
+        icon_img = Image(
+            source=icon,
             size_hint=(None, None),
             size=(28, 28),
             pos_hint={"center_y": 0.5}
         )
 
-        # Texte
-        lbl = Label(
-            text=texte,
-            color=(0.88, 0.93, 1, 1),
+        label = Label(
+            text=text,
+            color=(0.95, 0.95, 1, 1),
             font_size=16,
             halign="left",
-            valign="middle",
-            size_hint_x=1
+            valign="middle"
         )
-        lbl.bind(size=lambda inst, v: setattr(inst, "text_size", v))
 
-        self.add_widget(icon)
-        self.add_widget(lbl)
+        label.bind(size=lambda i, v: setattr(i, "text_size", v))
 
-        # Clic sur tout le widget
-        self.bind(on_touch_down=lambda inst, touch: callback(touch)
-                  if inst.collide_point(*touch.pos) else None)
+        self.add_widget(icon_img)
+        self.add_widget(label)
+
+        self.bind(on_touch_down=self._on_touch)
+
+    def _on_touch(self, instance, touch):
+        if self.collide_point(*touch.pos):
+            self.callback()
+            return True
+        return False
 
 
+# ===================================================
+# ECRAN ACCUEIL
+# ===================================================
 class AccueilScreen(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = FloatLayout()
+        layout = RelativeLayout()
 
-        # ── FOND ──────────────────────────────────────────
+        # ───────────────────────────────────────────────
+        # FOND
+        # ───────────────────────────────────────────────
         fond = Image(
             source="images/background.png",
             allow_stretch=True,
             keep_ratio=False,
-            size_hint=(1, 1),
-            pos_hint={"x": 0, "y": 0}
+            size_hint=(1, 1)
         )
         layout.add_widget(fond)
 
-        # ── OVERLAY SOMBRE ────────────────────────────────
-        overlay = FloatLayout(size_hint=(1, 1), pos_hint={"x": 0, "y": 0})
+        # ───────────────────────────────────────────────
+        # OVERLAY
+        # ───────────────────────────────────────────────
+        overlay = FloatLayout(size_hint=(1, 1))
+
         with overlay.canvas.before:
             Color(0, 0, 0, 0.30)
-            self._overlay_rect = Rectangle(pos=overlay.pos, size=overlay.size)
+            self.overlay_rect = Rectangle(pos=overlay.pos, size=overlay.size)
+
         overlay.bind(
-            pos=lambda inst, v: setattr(self._overlay_rect, 'pos', v),
-            size=lambda inst, v: setattr(self._overlay_rect, 'size', v)
+            pos=lambda i, v: setattr(self.overlay_rect, "pos", v),
+            size=lambda i, v: setattr(self.overlay_rect, "size", v)
         )
+
         layout.add_widget(overlay)
 
-        # ── BARRE HAUTE ───────────────────────────────────
-        top_bar = FloatLayout(
-            size_hint=(1, 0.13),
-            pos_hint={"x": 0, "top": 1}
-        )
-        with top_bar.canvas.before:
-            Color(0.05, 0.08, 0.18, 0.92)
-            self._bar_rect = Rectangle(pos=top_bar.pos, size=top_bar.size)
-        top_bar.bind(
-            pos=lambda inst, v: setattr(self._bar_rect, 'pos', v),
-            size=lambda inst, v: setattr(self._bar_rect, 'size', v)
-        )
-        layout.add_widget(top_bar)
-
-        # ── TITRE ─────────────────────────────────────────
-        app_titre = Label(
-            text="BIENVENUE",
-            font_size=22,
-            bold=True,
-            color=(0.9, 0.95, 1, 1),
-            size_hint=(0.55, 0.13),
-            pos_hint={"x": 0.03, "top": 1}
-        )
-        layout.add_widget(app_titre)
-
-        # ── BOUTON MENU ───────────────────────────────────
+        # ───────────────────────────────────────────────
+        # BOUTON MENU (rectangle arrondi, en haut)
+        # ───────────────────────────────────────────────
         self.menu_button = Button(
             text="MENU",
-            size_hint=(0.36, 0.08),
+            size_hint=(0.15, 0.07),
             pos_hint={"right": 0.97, "top": 0.97},
-            font_size=16,
-            bold=True,
             background_normal="",
-            background_color=(0, 0, 0, 0),
-            color=(1, 1, 1, 1)
+            background_color=(0.08, 0.45, 0.82, 1),
+            color=(1, 1, 1, 1),
+            font_size=14,
+            bold=True
         )
+
+        # Rendre le bouton rectangulaire avec coins arrondis
         with self.menu_button.canvas.before:
             Color(0.08, 0.45, 0.82, 1)
-            self._btn_rect = RoundedRectangle(
-                pos=self.menu_button.pos,
-                size=self.menu_button.size,
-                radius=[8]
-            )
-        self.menu_button.bind(
-            pos=lambda inst, v: setattr(self._btn_rect, 'pos', v),
-            size=lambda inst, v: setattr(self._btn_rect, 'size', v)
-        )
+            self.btn_bg = RoundedRectangle(pos=self.menu_button.pos, size=self.menu_button.size, radius=[10])
 
-        # ── MENU DÉROULANT ────────────────────────────────
-        self.dropdown = DropDown(auto_width=False, width=MENU_WIDTH)
+        def update_btn_bg(instance, value):
+            self.btn_bg.pos = instance.pos
+            self.btn_bg.size = instance.size
 
-        menus = [
-            #("Accueil",     "images/home.png",     "accueil"),
-            ("Clients",     "images/user.png",   "clients"),
-            ("Produits",    "images/produit.png",  "produits"),
-            ("Commande",    "images/commande.png", "commande"),
-            ("Historique", "images/facturation.png",  "historique_commande"),
-        ]
+        self.menu_button.bind(pos=update_btn_bg, size=update_btn_bg)
+        self.menu_button.background_color = (0, 0, 0, 0)  # Transparent pour laisser voir notre rectangle
 
-        for texte, icone, cible in menus:
-
-            def make_callback(val, dest):
-                def cb(touch):
-                    self.dropdown.select((val, dest))
-                return cb
-
-            item = MenuItemButton(
-                texte=texte,
-                icone=icone,
-                callback=make_callback(texte, cible),
-                width=MENU_WIDTH
-            )
-            self.dropdown.add_widget(item)
-
-        self.menu_button.bind(on_release=self.dropdown.open)
-        self.dropdown.bind(on_select=self.menu_action)
+        self.menu_button.bind(on_release=lambda x: self.toggle_drawer())
         layout.add_widget(self.menu_button)
 
-        # ── PIED DE PAGE ──────────────────────────────────
-        footer = Label(
-            text="© 2026  EN App  —  v1.0",
+        # ───────────────────────────────────────────────
+        # DRAWER (MENU DROITE centré verticalement)
+        # ───────────────────────────────────────────────
+        self.drawer_open = False
+
+        self.drawer = BoxLayout(
+            orientation="vertical",
+            size_hint=(None, None),  # Changé pour hauteur personnalisée
+            width=MENU_WIDTH,
+            height=520,  # Hauteur augmentée pour inclure le bouton quitter
+            pos=(self.width, (Window.height - 520) / 2),  # Centré verticalement
+            padding=[20, 30, 20, 30],
+            spacing=15
+        )
+
+        with self.drawer.canvas.before:
+            Color(0.07, 0.10, 0.22, 0.85)  # Fond semi-transparent
+            self.drawer_bg = RoundedRectangle(pos=self.drawer.pos, size=self.drawer.size, radius=[15])
+
+        self.drawer.bind(
+            pos=lambda i, v: setattr(self.drawer_bg, "pos", v),
+            size=lambda i, v: setattr(self.drawer_bg, "size", v)
+        )
+
+        # TITRE MENU
+        self.drawer.add_widget(Label(
+            text="MENU",
+            font_size=22,
+            bold=True,
+            size_hint_y=None,
+            height=50,
+            color=(1, 1, 1, 1)
+        ))
+
+        # ITEMS MENU
+        menus = [
+            ("Clients", "images/user.png", "clients"),
+            ("Produits", "images/produit.png", "produits"),
+            ("Commande", "images/commande.png", "commande"),
+            ("Historique", "images/facturation.png", "historique_commande"),
+        ]
+
+        for texte, icon, dest in menus:
+
+            def make_action(d=dest, t=texte):
+                def action():
+                    self.toggle_drawer()
+                    self.menu_button.text = t
+                    self.manager.transition.direction = "left"
+                    self.manager.current = d
+                return action
+
+            self.drawer.add_widget(MenuItem(texte, icon, make_action()))
+
+        # SEPARATEUR
+        separator = BoxLayout(
+            size_hint_y=None,
+            height=20
+        )
+        with separator.canvas.before:
+            Color(0.5, 0.6, 0.75, 0.3)
+            Rectangle(pos=separator.pos, size=separator.size)
+        self.drawer.add_widget(separator)
+
+        # BOUTON QUITTER
+        quit_item = MenuItem(
+            "Quitter",
+            "images/quit.png",  # Assurez-vous d'avoir cette icône ou changez le chemin
+            self.quit_app
+        )
+        self.drawer.add_widget(quit_item)
+
+        layout.add_widget(self.drawer)
+
+        # ───────────────────────────────────────────────
+        # FOOTER (en bas)
+        # ───────────────────────────────────────────────
+        layout.add_widget(Label(
+            text="© 2026 EN App — v1.0",
             font_size=11,
             color=(0.5, 0.6, 0.75, 0.8),
-            size_hint=(1, 0.05),
+            size_hint=(1, None),
+            height=30,
             pos_hint={"center_x": 0.5, "y": 0.01}
-        )
-        layout.add_widget(footer)
+        ))
 
         self.add_widget(layout)
 
-    # ── ACTION MENU ───────────────────────────────────────
-    def menu_action(self, instance, value):
-        texte, dest = value
-        self.menu_button.text = texte
-        if dest in ("accueil", "clients", "produits", "commande", "historique_commande"):
-            self.manager.current = dest
+        # Ajustement dynamique
+        self.bind(size=self._update_drawer)
 
-    # ── AJOUTER CETTE MÉTHODE POUR RÉINITIALISER LE MENU ──
+    # ===================================================
+    # FONCTION POUR QUITTER L'APPLICATION
+    # ===================================================
+    def quit_app(self):
+        """Ferme l'application"""
+        self.toggle_drawer()  # Ferme le menu
+        App.get_running_app().stop()  # Arrête l'application
+        Window.close()  # Ferme la fenêtre
+
+    # ===================================================
+    # OUVERTURE / FERMETURE MENU
+    # ===================================================
+    def toggle_drawer(self):
+
+        if self.drawer_open:
+            # Animation pour fermer vers la droite
+            anim = Animation(x=self.width, d=0.2)
+            anim.start(self.drawer)
+            self.drawer_open = False
+        else:
+            # Animation pour ouvrir depuis la droite, centré verticalement
+            target_x = self.width - MENU_WIDTH
+            anim = Animation(x=target_x, d=0.2)
+            anim.start(self.drawer)
+            self.drawer_open = True
+
+    # ===================================================
+    # RESPONSIVE
+    # ===================================================
+    def _update_drawer(self, *args):
+        # Mettre à jour la position du drawer pour garder le centrage vertical
+        if hasattr(self, 'drawer'):
+            self.drawer.y = (self.height - self.drawer.height) / 2
+
+            if self.drawer_open:
+                self.drawer.x = self.width - MENU_WIDTH
+            else:
+                self.drawer.x = self.width
+
+    # ===================================================
+    # RESET
+    # ===================================================
     def on_enter(self):
-        """Appelé quand on revient à l'écran d'accueil"""
-        # Réinitialiser le texte du bouton menu à "MENU"
         self.menu_button.text = "MENU"
+        # Mettre à jour la position du drawer lors de l'entrée
+        self._update_drawer()
 
-    # ── AJOUTER CETTE MÉTHODE POUR NETTOYER ───────────────
+    # ===================================================
+    # CLEAN EXIT
+    # ===================================================
     def on_pre_leave(self):
-        """Appelé quand on quitte l'écran d'accueil"""
-        # Fermer le dropdown s'il est ouvert
-        if self.dropdown.attach_to:
-            self.dropdown.dismiss()
+        if self.drawer_open:
+            self.toggle_drawer()

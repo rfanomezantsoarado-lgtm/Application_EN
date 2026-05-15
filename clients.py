@@ -1,3 +1,4 @@
+#Importation des bibliothèques utiles
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -22,7 +23,7 @@ ROW_EVEN     = (0.07, 0.12, 0.24, 1)
 HEADER_BG    = (0.05, 0.35, 0.65, 1)
 BAR_TOP      = (0.05, 0.08, 0.18, 1)
 
-
+#RECTANGLE ROND
 def _bg(widget, color, radius=0):
     with widget.canvas.before:
         Color(*color)
@@ -38,9 +39,12 @@ def _bg(widget, color, radius=0):
 
 def make_cell(text, w, bg_color, bold=False, font_size=13):
     """Cellule simple : Label avec fond coloré, taille fixe."""
+
+    text = "" if text is None else str(text)
+
     lbl = Label(
         text=f"[b]{text}[/b]" if bold else text,
-        markup=bold,
+        markup=True if bold else False,
         size_hint=(None, None),
         size=(w, 40),
         font_size=font_size,
@@ -48,8 +52,13 @@ def make_cell(text, w, bg_color, bold=False, font_size=13):
         halign="center",
         valign="middle"
     )
-    lbl.bind(size=lambda inst, v: setattr(inst, "text_size", v))
+
+    lbl.bind(
+        size=lambda inst, v: setattr(inst, "text_size", v)
+    )
+
     _bg(lbl, bg_color)
+
     return lbl
 
 
@@ -268,7 +277,7 @@ class ClientScreen(Screen):
 
         self.nom.background_color = (0.1, 0.16, 0.30, 1)
 
-        # ✅ AJOUT DANS SQLITE
+        # AJOUT DANS SQLITE
         client_id = ajouter_client_db(nom, adresse, nif, stat, contact)
 
         if client_id:

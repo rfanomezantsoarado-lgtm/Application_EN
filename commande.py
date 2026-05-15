@@ -1,3 +1,4 @@
+#Importation des bibliothèques utile
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -19,7 +20,6 @@ import subprocess
 import sys
 from kivy.utils import platform
 
-# Importer le générateur PDF depuis pdf_generator
 from pdf_generator import generer_pdf_facture
 
 # Import conditionnel pour Android
@@ -455,7 +455,6 @@ class CommandeScreen(Screen):
                     "Succès",
                     f"Commande N° {commande_id} enregistrée.\n"
                     f"Mode de paiement: {mode_paiement}\n"
-                    "(Installez reportlab pour le PDF)"
                 )
 
             self.reset_commande(None)
@@ -468,7 +467,7 @@ class CommandeScreen(Screen):
         _bg(content, BG_DARK)
 
         content.add_widget(Label(
-            text=f"[b]Facture N° {commande_id}[/b]\n\nPDF généré avec succès !",
+            text=f"Facture N° {commande_id}[/b]\n\nPDF généré avec succès !",
             markup=True,
             font_size=13,
             color=TEXT_WHITE,

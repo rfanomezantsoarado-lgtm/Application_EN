@@ -1,3 +1,4 @@
+#Importation des bibliothèques utiles
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -16,6 +17,8 @@ import os
 import datetime
 import subprocess
 import sys
+
+from pdf_generator import generer_pdf_facture
 
 # ===================================================
 # COULEURS
@@ -71,9 +74,9 @@ class HistoriqueCommandeScreen(Screen):
 
     # N°, Client, Date, Total, Avance, Reste, Statut, VOIR, PAYER, IMPRIMER
     HEADERS    = ["N°", "Client", "Date/Heure", "Total (Ar)",
-                  "Avance (Ar)", "Reste (Ar)", "Statut", "Voir", "Payer", "PDF"]
+                  "Avance (Ar)", "Reste (Ar)", "Statut", "Voir", "Payer"]
     COL_WIDTHS = [38,    100,      115,          88,
-                  88,            82,       72,     48,    52,    48]
+                  88,            82,       72,     48,    52]
     ROW_H = 40
 
     def __init__(self, **kwargs):
@@ -286,7 +289,7 @@ class HistoriqueCommandeScreen(Screen):
 
         total_w = sum(self.COL_WIDTHS)
         self.table = GridLayout(
-            cols=10,
+            cols=9,
             size_hint=(None, None),
             width=total_w,
             row_default_height=self.ROW_H,
@@ -478,24 +481,6 @@ class HistoriqueCommandeScreen(Screen):
             )
             self.table.add_widget(btn_payer)
 
-            # BOUTON PDF / IMPRIMER
-            w_pdf = self.COL_WIDTHS[9]
-            btn_pdf = Button(
-                text="PDF",
-                size_hint=(None, None),
-                size=(w_pdf, self.ROW_H),
-                font_size=10,
-                bold=True,
-                background_normal="",
-                background_color=(0, 0, 0, 0),
-                color=TEXT_WHITE
-            )
-            _bg(btn_pdf, ACCENT, radius=4)
-            btn_pdf.bind(
-                on_release=lambda inst, cid=commande_id:
-                self.generer_et_afficher_facture(cid)
-            )
-            self.table.add_widget(btn_pdf)
 
         # Statistiques
         self.lbl_total_commandes.text = str(len(self.commandes))
@@ -527,7 +512,7 @@ class HistoriqueCommandeScreen(Screen):
         _bg(header, BG_CARD, radius=5)
 
         lbl_numero = Label(
-            text=f"[b]Commande N° {commande_id}[/b]",
+            text=f"Commande N° {commande_id}[/b]",
             markup=True, font_size=16, color=ACCENT,
             size_hint=(1, None), height=25,
             halign="center", valign="middle"
@@ -667,17 +652,19 @@ class HistoriqueCommandeScreen(Screen):
                     break
 
             # Utiliser le mode de paiement passé ou récupérer de la commande
+            mode_paiement = commande.get("mode_paiement")
+
+            # Valeur par defaut
             if not mode_paiement:
-                if commande.get('reste', 0) == 0:
-                    mode_paiement = "ESPECE"
-                elif commande.get('avance', 0) > 0:
-                    mode_paiement = "AVANCE"
-                else:
-                    mode_paiement = "ESPECE"
+                mode_paiement = "Espece"
+
+            # Gestion numero cheque
+            numero_cheque = commande.get("numero_cheque", "")
+
+            if mode_paiement != "Chèque":
+                numero_cheque = ""
 
             # Générer le PDF
-            from pdf_generator import generer_pdf_facture
-
             filename = generer_pdf_facture(
                 commande_id=commande_id,
                 client_nom=commande['client_nom'],
@@ -712,7 +699,7 @@ class HistoriqueCommandeScreen(Screen):
         _bg(content, BG_DARK)
 
         content.add_widget(Label(
-            text=f"[b]✓ Facture N° {commande_id}[/b]\n\nPDF généré avec succès !",
+            text=f"Facture N° {commande_id}[/b]\n\nPDF généré avec succès !",
             markup=True,
             font_size=13,
             color=TEXT_WHITE,

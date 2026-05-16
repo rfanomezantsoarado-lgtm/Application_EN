@@ -18,7 +18,7 @@ jobs:
         path: .buildozer
         key: buildozer-${{ hashFiles('buildozer.spec') }}
         
-    - name: Setup Java (Fix for broken PPA)
+    - name: Setup Java
       run: |
         sudo apt update
         sudo apt install -y openjdk-17-jdk openjdk-17-jre
@@ -53,11 +53,10 @@ jobs:
         
     - name: Build APK
       run: |
-        buildozer init
-        buildozer -v android debug
+        buildozer -v android debug  
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: enapp
+        name: application-apk
         path: bin/*.apk

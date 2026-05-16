@@ -15,14 +15,20 @@ source.dir = .
 # (list) Source files to include (leave empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas,ttf,txt,db
 
-# (list) List of inclusions using pattern matching
-source.include_patterns = images/*,factures/*
+# (list) Source files to exclude
+source.exclude_exts = spec
+
+# (list) List of directory to exclude
+source.exclude_dirs = tests, bin, venv, .git, __pycache__
 
 # (str) Application versioning
 version = 0.1
 
-# (list) Application requirements - AJOUT CRITIQUE
-requirements = python3,kivy==2.3.0,sqlite3,android,pyjnius,reportlab,requests
+# (list) Application requirements - CORRECTION ICI
+# Note: sqlite3 est inclus par défaut, pas besoin de le spécifier
+# android, pyjnius sont des dépendances internes de p4a
+# reportlab nécessite PIL
+requirements = python3,kivy==2.3.0,reportlab,pillow,requests
 
 # (str) Presplash of the application
 presplash.filename = %(source.dir)s/images/icon.png
@@ -33,7 +39,7 @@ icon.filename = %(source.dir)s/images/icon.png
 # (str) Supported orientations
 orientation = portrait
 
-# (list) Permissions - AJOUT CRITIQUE
+# (list) Permissions
 android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,INTERNET
 
 # (int) Target Android API
@@ -66,10 +72,22 @@ android.logcat_filters = *:S python:D
 # (bool) Copy library instead of making a libpymodules.so
 android.copy_libs = True
 
-# (bool) Skip byte compile for .py files (aide au debugging)
+# (bool) Skip byte compile for .py files
 android.no-byte-compile-python = False
+
+# (bool) Enable AndroidX support
+android.enable_androidx = True
+
+# (str) Python-for-android branch
+p4a.branch = develop
 
 [buildozer]
 
 log_level = 2
 warn_on_root = 1
+
+# (str) Path to build artifact storage
+build_dir = ./.buildozer
+
+# (str) Path to build output storage
+bin_dir = ./bin

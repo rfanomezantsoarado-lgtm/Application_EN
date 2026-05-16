@@ -69,15 +69,13 @@ jobs:
 
     - name: Accept Android licenses
       run: yes | sdkmanager --licenses || true
-
-    - name: Cache Buildozer
-      uses: actions/cache@v4
-      with:
-        path: |
-          .buildozer
-          ~/.buildozer
-          ~/.gradle
-        key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+ 
+    - name: Full clean
+      run: |
+        rm -rf .buildozer
+        rm -rf ~/.buildozer
+        rm -rf bin
+        rm -rf .gradle
 
     - name: Build APK
       run: |

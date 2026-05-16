@@ -28,7 +28,7 @@ version = 0.1
 # Note: sqlite3 est inclus par défaut, pas besoin de le spécifier
 # android, pyjnius sont des dépendances internes de p4a
 # reportlab nécessite PIL
-requirements = python3,kivy,pillow,requests
+requirements = python3,kivy,pillow,requests,fpdf2
 
 # (str) Presplash of the application
 presplash.filename = %(source.dir)s/images/icon.png

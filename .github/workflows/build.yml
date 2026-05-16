@@ -1,4 +1,4 @@
-name: Build APK
+name: CI
 on:
   push:
     branches: [ main ]
@@ -6,13 +6,20 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  
+    runs-on: ubuntu-22.04
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Build APK
-      uses: ArtemSBulgakov/buildozer-action@v2
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Cache Buildozer
+      uses: actions/cache@v4
+      with:
+        path: .buildozer
+        key: buildozer-${{ hashFiles('buildozer.spec') }}
+        
+    - name: Build with Buildozer
+      uses: ArtemSBulgakov/buildozer-action@v1 
       id: buildozer
       with:
         command: buildozer android debug
@@ -22,5 +29,5 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: my-app
+        name: enapp
         path: ${{ steps.buildozer.outputs.filename }}

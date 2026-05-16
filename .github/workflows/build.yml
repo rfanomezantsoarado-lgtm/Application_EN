@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout project
+    - name: Checkout source
       uses: actions/checkout@v4
 
-    - name: Setup Python 3.11
+    - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.11"
@@ -25,42 +25,42 @@ jobs:
 
         sudo apt-get install -y \
           openjdk-17-jdk \
+          python3-pip \
+          python3-setuptools \
+          python3-wheel \
+          python3-dev \
+          git \
+          zip \
+          unzip \
           autoconf \
           automake \
           libtool \
           pkg-config \
-          build-essential \
-          cmake \
-          ccache \
-          git \
-          zip \
-          unzip \
-          libffi-dev \
-          libssl-dev \
           zlib1g-dev \
           libncurses5-dev \
           libncursesw5-dev \
-          libtinfo5 \
-          libltdl-dev \
-          python3-pip \
-          python3-setuptools \
-          python3-wheel \
-          python3-dev
+          cmake \
+          libffi-dev \
+          libssl-dev \
+          build-essential \
+          ccache \
+          libltdl-dev
 
-    - name: Fix libtoolize issue
+    - name: Fix libtoolize
       run: |
         sudo ln -sf /usr/bin/libtoolize /usr/bin/glibtoolize || true
-        which libtoolize
-        libtoolize --version
 
-    - name: Upgrade pip tools
+    - name: Install Buildozer
       run: |
         python -m pip install --upgrade pip
-        pip install --upgrade \
-          cython==0.29.37 \
-          virtualenv
+        pip install cython==0.29.37
+        pip install buildozer
+        pip install virtualenv
 
-    - name: Cache Buildozer and Gradle
+    - name: Accept Android licenses
+      run: yes | sdkmanager --licenses || true
+
+    - name: Cache Buildozer
       uses: actions/cache@v4
       with:
         path: |
@@ -69,20 +69,11 @@ jobs:
           ~/.gradle
         key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-    - name: Build APK with Buildozer
-      uses: ArtemSBulgakov/buildozer-action@v1
-      with:
-        command: buildozer android debug
-        buildozer_version: stable
+    - name: Build APK
+      run: |
+        buildozer android debug
 
-      env:
-        ANDROIDAPI: 33
-        ANDROIDMINAPI: 21
-        ANDROIDNDK: 25b
-        ANDROIDSDK: /usr/local/lib/android/sdk
-        PATH: /usr/bin:$PATH
-
-    - name: Upload APK artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: EN-App-APK

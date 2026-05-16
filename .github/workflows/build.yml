@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
@@ -18,42 +18,37 @@ jobs:
         path: .buildozer
         key: buildozer-${{ hashFiles('buildozer.spec') }}
         
-    - name: Setup Java
+    - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y openjdk-17-jdk openjdk-17-jre
-        java -version
-        
-    - name: Install Buildozer dependencies
-      run: |
         sudo apt install -y \
-          git \
-          zip \
-          unzip \
-          python3-pip \
-          python3-dev \
-          libffi-dev \
-          libssl-dev \
-          liblzma-dev \
-          autoconf \
-          automake \
-          build-essential \
-          libtool \
-          pkg-config \
-          zlib1g-dev \
-          libncurses5-dev \
-          libncursesw5-dev \
-          libtinfo5 \
-          cmake
+          git zip unzip \
+          python3-pip python3-dev \
+          libffi-dev libssl-dev \
+          autoconf automake build-essential \
+          libtool pkg-config cmake \
+          openjdk-17-jdk
         
     - name: Install Buildozer
       run: |
-        pip3 install --user buildozer cython
+        pip3 install --user buildozer
         echo "$HOME/.local/bin" >> $GITHUB_PATH
+        
+    - name: Accept Android Licenses
+      run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        
+        yes | $HOME/.local/bin/buildozer android update || true
+        
+        if [ -f ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager ]; then
+          yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+        fi
         
     - name: Build APK
       run: |
-        buildozer -v android debug  
+        echo "android.accept_sdk_license = True" >> buildozer.spec
+        buildozer -v android debug
         
     - name: Upload APK
       uses: actions/upload-artifact@v4

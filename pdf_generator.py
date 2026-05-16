@@ -1,5 +1,5 @@
 # pdf_generator.py
-
+from kivy.app import App
 import os
 import datetime
 
@@ -49,8 +49,7 @@ def generer_pdf_facture(
         return None
 
     try:
-
-        factures_dir = "factures"
+        factures_dir = App.get_running_app().user_data_dir
 
         if not os.path.exists(factures_dir):
             os.makedirs(factures_dir)

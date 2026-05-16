@@ -6,52 +6,59 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # Use 22.04, it's more stable
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Install ALL system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          autoconf \
+          automake \
+          libtool \
+          pkg-config \
+          make \
+          gcc \
+          g++ \
+          libffi-dev \
+          libssl-dev \
+          zlib1g-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libtinfo5 \
+          cmake \
+          git \
+          zip \
+          unzip \
+          python3-pip \
+          python3-dev
+          
+    - name: Setup Libtool PATH (Critical fix)
+      run: |
+        # Ensure libtoolize is in PATH
+        sudo ln -sf /usr/bin/libtoolize /usr/bin/glibtoolize || true
+        which libtoolize
+        libtoolize --version
+        
     - name: Cache Buildozer
       uses: actions/cache@v4
       with:
         path: .buildozer
         key: buildozer-${{ hashFiles('buildozer.spec') }}
         
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y \
-          git zip unzip \
-          python3-pip python3-dev \
-          libffi-dev libssl-dev \
-          autoconf automake build-essential \
-          libtool pkg-config cmake \
-          openjdk-17-jdk
-    - name: Install all common build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y autoconf automake libtool pkg-config make gcc    
-    - name: Install Buildozer
-      run: |
-        pip3 install --user buildozer
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-        
-    - name: Accept Android Licenses
-      run: |
-        mkdir -p ~/.android
-        touch ~/.android/repositories.cfg
-        
-        yes | $HOME/.local/bin/buildozer android update || true
-        
-        if [ -f ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager ]; then
-          yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-        fi
-        
     - name: Build APK
-      run: |
-        echo "android.accept_sdk_license = True" >> buildozer.spec
-        buildozer -v android debug
+      uses: ArtemSBulgakov/buildozer-action@v1
+      id: buildozer
+      env:
+        # Force libtool to be found
+        PATH: /usr/bin:$PATH
+      with:
+        command: buildozer android debug
+        workdir: ./
+        buildozer_version: stable
         
     - name: Upload APK
       uses: actions/upload-artifact@v4

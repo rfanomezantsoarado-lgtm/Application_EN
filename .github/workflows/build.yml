@@ -1,34 +1,87 @@
-- name: Install system dependencies
-  run: |
-    sudo apt-get update
+name: Build EN App APK
 
-    sudo apt-get install -y \
-      openjdk-17-jdk \
-      python3-pip \
-      python3-setuptools \
-      python3-wheel \
-      python3-dev \
-      git \
-      zip \
-      unzip \
-      autoconf \
-      automake \
-      libtool \
-      pkg-config \
-      zlib1g-dev \
-      libncurses5-dev \
-      libncursesw5-dev \
-      cmake \
-      libffi-dev \
-      libssl-dev \
-      build-essential \
-      ccache \
-      libltdl-dev
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
-- name: Set JAVA_HOME to Java 17
-  run: |
-    echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-    echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+jobs:
+  build:
+    runs-on: ubuntu-22.04
 
-    java -version
-    echo $JAVA_HOME
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+    
+        sudo apt-get install -y \
+          openjdk-17-jdk \
+          python3-pip \
+          python3-setuptools \
+          python3-wheel \
+          python3-dev \
+          git \
+          zip \
+          unzip \
+          autoconf \
+          automake \
+          libtool \
+          pkg-config \
+          zlib1g-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          cmake \
+          libffi-dev \
+          libssl-dev \
+          build-essential \
+          ccache \
+          libltdl-dev
+
+    - name: Set JAVA_HOME to Java 17
+      run: |
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+        echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+    
+        java -version
+        echo $JAVA_HOME
+        - name: Fix libtoolize
+          run: |
+            sudo ln -sf /usr/bin/libtoolize /usr/bin/glibtoolize || true
+
+    - name: Install Buildozer
+      run: |
+        python -m pip install --upgrade pip
+        pip install cython==0.29.37
+        pip install buildozer
+        pip install virtualenv
+
+    - name: Accept Android licenses
+      run: yes | sdkmanager --licenses || true
+
+    - name: Cache Buildozer
+      uses: actions/cache@v4
+      with:
+        path: |
+          .buildozer
+          ~/.buildozer
+          ~/.gradle
+        key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+
+    - name: Build APK
+      run: |
+        buildozer android debug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: EN-App-APK
+        path: bin/*.apk

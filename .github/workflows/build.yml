@@ -1,77 +1,80 @@
-name: CI
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+name: 'Kivy App to APK'
+description: 'Convert Kivy app to APK'
+inputs:
+  python-version:
+    description: 'Python version to use'
+    default: '3.8'
+  work-dir:
+    default: '.'
+    description: 'Working directory'
+  buildozer-cmd:
+    default: 'buildozer android debug'
+    description: 'Buildozer command to use'
 
-jobs:
-  build:
-    runs-on: ubuntu-22.04  # Use 22.04, it's more stable
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Install ALL system dependencies
+# Add the branding section
+branding:
+  color: 'green'
+  icon: 'play'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup python
+      uses: actions/setup-python@v5
+      with:
+        architecture: x64
+        python-version: ${{ inputs.python-version }}
+
+    - name: Setup Java 17 required by Gradle
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'  # or 'zulu','liberica', etc.
+        java-version: '17'
+
+    - name: Set JAVA_HOME
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
+        echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Prepare virtual environment
+      run: |
+        python3 -m venv venv
+        source venv/bin/activate
+        echo "Using Python==$(python --version)"
+      shell: bash
+      
+    - name: Install and upgrade dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git \
+          zip \
+          unzip \
+          openjdk-17-jdk \
+          python3-pip \
           autoconf \
-          automake \
           libtool \
           pkg-config \
-          make \
-          gcc \
-          g++ \
-          libffi-dev \
-          libssl-dev \
           zlib1g-dev \
           libncurses5-dev \
           libncursesw5-dev \
           libtinfo5 \
           cmake \
-          git \
-          zip \
-          unzip \
-          python3-pip \
-          python3-dev
-          
-    - name: Setup Libtool PATH (Critical fix)
+          libffi-dev \
+          libssl-dev
+        export PATH=$PATH:~/.local/bin/
+        python3 -m pip install --upgrade \
+          Cython==0.29.33 \
+          buildozer
+      shell: bash
+
+    - name: Install requirements in requirements.txt if it exists
       run: |
-        # Ensure libtoolize is in PATH
-        sudo ln -sf /usr/bin/libtoolize /usr/bin/glibtoolize || true
-        which libtoolize
-        libtoolize --version
-        
-    - name: Cache Buildozer
-      uses: actions/cache@v4
-      with:
-        path: .buildozer
-        key: buildozer-${{ hashFiles('buildozer.spec') }}
-    
-    # NEW: Fix buildozer.spec before building
-    - name: Fix buildozer.spec requirements
+        if [ -f requirements.txt ]; then
+          python3 -m pip install -r requirements.txt
+        fi
+      shell: bash
+
+    - name: Build with Buildozer
       run: |
-        # Remove problematic Python version pinning
-        sed -i 's/requirements = python3==3.11.9,hostpython3==3.11.9,kivy/requirements = python3,kivy/g' buildozer.spec
-        sed -i 's/requirements = python3==3.11,hostpython3==3.11,kivy/requirements = python3,kivy/g' buildozer.spec
-        sed -i 's/requirements = python3==.*,hostpython3==.*,kivy/requirements = python3,kivy/g' buildozer.spec
-        # Show the fixed requirements
-        grep "^requirements" buildozer.spec || echo "requirements line not found"
-        
-    - name: Build APK
-      uses: ArtemSBulgakov/buildozer-action@v1
-      id: buildozer
-      env:
-        # Force libtool to be found
-        PATH: /usr/bin:$PATH
-      with:
-        command: buildozer android debug
-        workdir: ./
-        buildozer_version: stable  # Changed from 'master' to 'stable' for reliability
-        
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: application-apk
-        path: bin/*.apk
+        ${{ inputs.buildozer-cmd }}
+      shell: bash

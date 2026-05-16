@@ -10,7 +10,7 @@ from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.animation import Animation
 from kivy.core.window import Window
 from kivy.app import App
-
+import os
 
 # Largeur du menu
 MENU_WIDTH = 280
@@ -84,8 +84,9 @@ class AccueilScreen(Screen):
         # ───────────────────────────────────────────────
         # FOND
         # ───────────────────────────────────────────────
+        background_path = os.path.join("images", "background.png")
         fond = Image(
-            source="images/background.png",
+            source=background_path,
             allow_stretch=True,
             keep_ratio=False,
             size_hint=(1, 1)

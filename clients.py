@@ -407,6 +407,3 @@ class ClientScreen(Screen):
         # Mettre à jour le compteur
         n = len(self.clients)
         self.lbl_count.text = f"LISTE DES CLIENTS  -  {n} enregistré(s)"
-        # Vider le formulaire
-        for ti in self._inputs.values():
-            ti.text = ""

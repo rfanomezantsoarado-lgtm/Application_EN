@@ -10,6 +10,7 @@ from kivy.uix.popup import Popup
 from kivy.graphics import Color, RoundedRectangle, Rectangle
 from kivy.uix.spinner import Spinner
 from kivy.clock import Clock
+from kivy.metrics import dp, sp
 from database import (init_database, get_all_commandes, get_commandes_client,
                       get_all_clients, get_commande_by_id, payer_reste_db)
 import re
@@ -72,18 +73,19 @@ def make_cell(text, w, h, bg_color, bold=False, font_size=12, text_color=None):
 
 class HistoriqueCommandeScreen(Screen):
 
-    # N°, Client, Date, Total, Avance, Reste, Statut, VOIR, PAYER, IMPRIMER
+    # N°, Client, Date, Total, Avance, Reste, Statut, VOIR, PAYER
     HEADERS    = ["N°", "Client", "Date/Heure", "Total (Ar)",
                   "Avance (Ar)", "Reste (Ar)", "Statut", "Voir", "Payer"]
-    COL_WIDTHS = [38,    100,      115,          88,
-                  88,            82,       72,     48,    52]
-    ROW_H = 40
+    # Largeurs augmentées pour mobile
+    COL_WIDTHS = [dp(45), dp(110), dp(125), dp(95),
+                  dp(95), dp(90), dp(80), dp(55), dp(60)]
+    ROW_H = dp(48)  # Hauteur de ligne augmentée
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.commandes = []
-        self.commandes_originales = []  # Pour stocker toutes les commandes
+        self.commandes_originales = []
         self.filtre_client = "Tous"
 
         root_layout = BoxLayout(orientation="vertical")
@@ -93,17 +95,17 @@ class HistoriqueCommandeScreen(Screen):
         top_bar = BoxLayout(
             orientation="horizontal",
             size_hint=(1, None),
-            height=55,
-            padding=[10, 5, 10, 5],
-            spacing=10
+            height=dp(65),  # Augmenté
+            padding=[dp(10), dp(8), dp(10), dp(8)],
+            spacing=dp(10)
         )
         _bg(top_bar, BAR_TOP)
 
         btn_back = Button(
             text="< RETOUR",
             size_hint=(None, 1),
-            width=90,
-            font_size=12,
+            width=dp(100),  # Augmenté
+            font_size=sp(14),  # Augmenté
             bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
@@ -115,7 +117,7 @@ class HistoriqueCommandeScreen(Screen):
         title_label = Label(
             text="[b]HISTORIQUE DES COMMANDES[/b]",
             markup=True,
-            font_size=17,
+            font_size=sp(20),  # Augmenté
             color=TEXT_WHITE,
             size_hint=(1, 1),
             halign="center",
@@ -129,64 +131,62 @@ class HistoriqueCommandeScreen(Screen):
         search_card = BoxLayout(
             orientation="vertical",
             size_hint=(1, None),
-            height=140,
-            padding=[10, 8, 10, 8],
-            spacing=6
+            height=dp(180),  # Augmenté
+            padding=[dp(12), dp(10), dp(12), dp(10)],
+            spacing=dp(8)
         )
-        _bg(search_card, BG_CARD, radius=10)
+        _bg(search_card, BG_CARD, radius=dp(12))
 
         # Titre
         search_card.add_widget(Label(
             text="[b]RECHERCHE[/b]",
             markup=True,
-            font_size=12,
+            font_size=sp(14),  # Augmenté
             color=ACCENT,
             size_hint=(1, None),
-            height=20,
+            height=dp(28),
             halign="center"
         ))
 
-        # Ligne 1: N° Facture et Client (2 colonnes)
-        row1 = BoxLayout(size_hint=(1, None), height=32, spacing=10)
-        # Colonne 1: N° Facture
-        col1 = BoxLayout(size_hint=(0.5, 1), spacing=5)
+        # Ligne 1: N° Facture et Client
+        row1 = BoxLayout(size_hint=(1, None), height=dp(45), spacing=dp(10))
+        col1 = BoxLayout(size_hint=(0.5, 1), spacing=dp(8))
         col1.add_widget(Label(
             text="N° :",
             size_hint=(0.3, 1),
             color=TEXT_WHITE,
-            font_size=11,
+            font_size=sp(13),
             halign="right"
         ))
         self.search_numero = TextInput(
             text="",
             multiline=False,
-            font_size=11,
+            font_size=sp(13),
             foreground_color=TEXT_WHITE,
             background_color=(0.1, 0.16, 0.30, 1),
             size_hint=(0.7, 1),
-            padding=[6, 5],
+            padding=[dp(8), dp(8)],
             hint_text="Numéro"
         )
         col1.add_widget(self.search_numero)
 
-        # Colonne 2: Client
-        col2 = BoxLayout(size_hint=(0.5, 1), spacing=5)
+        col2 = BoxLayout(size_hint=(0.5, 1), spacing=dp(8))
         col2.add_widget(Label(
             text="Client :",
             size_hint=(0.3, 1),
             color=TEXT_WHITE,
-            font_size=11,
+            font_size=sp(13),
             halign="right"
         ))
         self.search_client = TextInput(
             text="",
             multiline=False,
-            font_size=11,
+            font_size=sp(13),
             foreground_color=TEXT_WHITE,
             background_color=(0.1, 0.16, 0.30, 1),
             size_hint=(0.7, 1),
-            padding=[6, 5],
-            hint_text="Nom"
+            padding=[dp(8), dp(8)],
+            hint_text="Nom client"
         )
         col2.add_widget(self.search_client)
 
@@ -194,50 +194,50 @@ class HistoriqueCommandeScreen(Screen):
         row1.add_widget(col2)
         search_card.add_widget(row1)
 
-        # Ligne 2: Date (seul)
-        row2 = BoxLayout(size_hint=(1, None), height=32, spacing=10)
+        # Ligne 2: Date
+        row2 = BoxLayout(size_hint=(1, None), height=dp(45), spacing=dp(10))
         row2.add_widget(Label(
             text="Date :",
             size_hint=(0.2, 1),
             color=TEXT_WHITE,
-            font_size=11,
+            font_size=sp(13),
             halign="right"
         ))
         self.search_date = TextInput(
             text="",
             multiline=False,
-            font_size=11,
+            font_size=sp(13),
             foreground_color=TEXT_WHITE,
             background_color=(0.1, 0.16, 0.30, 1),
             size_hint=(0.8, 1),
-            padding=[6, 5],
+            padding=[dp(8), dp(8)],
             hint_text="JJ/MM/AAAA"
         )
         row2.add_widget(self.search_date)
         search_card.add_widget(row2)
 
         # Boutons de recherche
-        btn_row = BoxLayout(size_hint=(1, None), height=36, spacing=8)
+        btn_row = BoxLayout(size_hint=(1, None), height=dp(48), spacing=dp(10))
         btn_rechercher = Button(
             text="RECHERCHER",
-            font_size=11,
+            font_size=sp(13),
             bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_rechercher, ACCENT, radius=6)
+        _bg(btn_rechercher, ACCENT, radius=dp(8))
         btn_rechercher.bind(on_release=self.rechercher_commandes)
 
         btn_reset = Button(
             text="RÉINITIALISER",
-            font_size=11,
+            font_size=sp(13),
             bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_reset, ACCENT_ORANGE, radius=6)
+        _bg(btn_reset, ACCENT_ORANGE, radius=dp(8))
         btn_reset.bind(on_release=self.reset_recherche)
 
         btn_row.add_widget(btn_rechercher)
@@ -250,42 +250,42 @@ class HistoriqueCommandeScreen(Screen):
         stats_card = BoxLayout(
             orientation="horizontal",
             size_hint=(1, None),
-            height=76,
-            padding=[12, 8, 12, 8],
-            spacing=6
+            height=dp(90),  # Augmenté
+            padding=[dp(12), dp(10), dp(12), dp(10)],
+            spacing=dp(6)
         )
-        _bg(stats_card, BG_CARD, radius=10)
+        _bg(stats_card, BG_CARD, radius=dp(12))
 
         for attr, lbl_txt, color in [
-            ("lbl_total_commandes", "TOTAL COMMANDES", ACCENT_GREEN),
-            ("lbl_total_avances",   "TOTAL AVANCES",   ACCENT),
-            ("lbl_total_restes",    "TOTAL RESTES",    ACCENT_RED),
+            ("lbl_total_commandes", "TOTAL\nCOMMANDES", ACCENT_GREEN),
+            ("lbl_total_avances",   "TOTAL\nAVANCES",   ACCENT),
+            ("lbl_total_restes",    "TOTAL\nRESTES",    ACCENT_RED),
         ]:
-            box = BoxLayout(orientation="vertical", size_hint=(0.33, 1))
-            box.add_widget(Label(text=lbl_txt, font_size=10,
+            box = BoxLayout(orientation="vertical", size_hint=(0.33, 1), spacing=dp(4))
+            box.add_widget(Label(text=lbl_txt, font_size=sp(11),
                                  color=TEXT_DIM, halign="center"))
-            lbl = Label(text="0", font_size=20, color=color,
+            lbl = Label(text="0", font_size=sp(22), color=color,
                         bold=True, halign="center")
             setattr(self, attr, lbl)
             box.add_widget(lbl)
             stats_card.add_widget(box)
             if attr != "lbl_total_restes":
                 stats_card.add_widget(
-                    Label(text="|", size_hint=(0.01, 1), color=TEXT_DIM, font_size=18)
+                    Label(text="|", size_hint=(0.02, 1), color=TEXT_DIM, font_size=sp(22))
                 )
         root_layout.add_widget(stats_card)
 
         # ── TITRE TABLEAU ─────────────────────────────────
-        table_title = BoxLayout(size_hint=(1, None), height=28, padding=[10, 0, 10, 0])
+        table_title = BoxLayout(size_hint=(1, None), height=dp(36), padding=[dp(10), dp(5), dp(10), 0])
         table_title.add_widget(Label(
             text="[b]LISTE DES COMMANDES[/b]",
-            markup=True, font_size=13, color=ACCENT,
+            markup=True, font_size=sp(15), color=ACCENT,
             halign="left", size_hint=(1, 1)
         ))
         root_layout.add_widget(table_title)
 
         # ── TABLEAU ───────────────────────────────────────
-        table_container = BoxLayout(size_hint=(1, 1), padding=[6, 4, 6, 4])
+        table_container = BoxLayout(size_hint=(1, 1), padding=[dp(6), dp(4), dp(6), dp(4)])
 
         total_w = sum(self.COL_WIDTHS)
         self.table = GridLayout(
@@ -301,14 +301,14 @@ class HistoriqueCommandeScreen(Screen):
 
         for h, w in zip(self.HEADERS, self.COL_WIDTHS):
             self.table.add_widget(
-                make_cell(h, w, self.ROW_H, HEADER_BG, bold=True, font_size=11)
+                make_cell(h, w, self.ROW_H, HEADER_BG, bold=True, font_size=sp(12))
             )
 
         scroll = ScrollView(
             size_hint=(1, 1),
             do_scroll_x=True,
             do_scroll_y=True,
-            bar_width=6,
+            bar_width=dp(8),
             bar_color=list(ACCENT[:3]) + [0.8]
         )
         scroll.add_widget(self.table)
@@ -430,7 +430,7 @@ class HistoriqueCommandeScreen(Screen):
                 tc = statut_color if i == 6 else None
                 self.table.add_widget(
                     make_cell(val, w, self.ROW_H, row_color,
-                              bold=False, font_size=11, text_color=tc)
+                              bold=False, font_size=sp(11), text_color=tc)
                 )
 
             commande_id = commande[0]
@@ -443,13 +443,13 @@ class HistoriqueCommandeScreen(Screen):
                 text="VOIR",
                 size_hint=(None, None),
                 size=(w_voir, self.ROW_H),
-                font_size=10,
+                font_size=sp(11),
                 bold=True,
                 background_normal="",
                 background_color=(0, 0, 0, 0),
                 color=TEXT_WHITE
             )
-            _bg(btn_voir, ACCENT_BLUE, radius=4)
+            _bg(btn_voir, ACCENT_BLUE, radius=dp(6))
             btn_voir.bind(
                 on_release=lambda inst, cid=commande_id:
                 self.afficher_details_commande(cid)
@@ -462,7 +462,7 @@ class HistoriqueCommandeScreen(Screen):
                 text="PAYER",
                 size_hint=(None, None),
                 size=(w_payer, self.ROW_H),
-                font_size=10,
+                font_size=sp(11),
                 bold=True,
                 background_normal="",
                 background_color=(0, 0, 0, 0),
@@ -471,7 +471,7 @@ class HistoriqueCommandeScreen(Screen):
             )
             _bg(btn_payer,
                 GREY if reste_val <= 0 else ACCENT_ORANGE,
-                radius=4)
+                radius=dp(6))
             btn_payer.bind(
                 on_release=lambda inst,
                 cid=commande_id,
@@ -481,7 +481,6 @@ class HistoriqueCommandeScreen(Screen):
             )
             self.table.add_widget(btn_payer)
 
-
         # Statistiques
         self.lbl_total_commandes.text = str(len(self.commandes))
         self.lbl_total_avances.text = f"{total_avances:,.0f} Ar"
@@ -490,13 +489,13 @@ class HistoriqueCommandeScreen(Screen):
         if not self.commandes:
             if len(self.table.children) == len(self.HEADERS):
                 self.table.add_widget(
-                    make_cell("Aucune commande trouvee",
+                    make_cell("Aucune commande trouvée",
                               sum(self.COL_WIDTHS), self.ROW_H,
-                              BG_CARD, font_size=13, text_color=TEXT_DIM)
+                              BG_CARD, font_size=sp(13), text_color=TEXT_DIM)
                 )
 
     # ═══════════════════════════════════════════════════
-    # POPUP  VOIR  — détails de la commande
+    # POPUP VOIR — détails de la commande
     # ═══════════════════════════════════════════════════
     def afficher_details_commande(self, commande_id):
         commande = get_commande_by_id(commande_id)
@@ -504,17 +503,17 @@ class HistoriqueCommandeScreen(Screen):
             self.show_message("Erreur", "Commande introuvable")
             return
 
-        content = BoxLayout(orientation="vertical", spacing=8, padding=10)
+        content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(12))
         _bg(content, BG_DARK)
 
         # En-tête centré
-        header = BoxLayout(orientation="vertical", size_hint=(1, None), height=60, spacing=5)
-        _bg(header, BG_CARD, radius=5)
+        header = BoxLayout(orientation="vertical", size_hint=(1, None), height=dp(75), spacing=dp(8))
+        _bg(header, BG_CARD, radius=dp(8))
 
         lbl_numero = Label(
             text=f"Commande N° {commande_id}[/b]",
-            markup=True, font_size=16, color=ACCENT,
-            size_hint=(1, None), height=25,
+            markup=True, font_size=sp(18), color=ACCENT,
+            size_hint=(1, None), height=dp(30),
             halign="center", valign="middle"
         )
         lbl_numero.bind(size=lambda inst, v: setattr(inst, "text_size", v))
@@ -522,8 +521,8 @@ class HistoriqueCommandeScreen(Screen):
 
         lbl_client = Label(
             text=f"{commande['client_nom']}",
-            font_size=13, color=TEXT_WHITE,
-            size_hint=(1, None), height=20,
+            font_size=sp(15), color=TEXT_WHITE,
+            size_hint=(1, None), height=dp(25),
             halign="center", valign="middle"
         )
         lbl_client.bind(size=lambda inst, v: setattr(inst, "text_size", v))
@@ -531,8 +530,8 @@ class HistoriqueCommandeScreen(Screen):
 
         lbl_date = Label(
             text=f"Date : {commande['date']}",
-            font_size=11, color=TEXT_DIM,
-            size_hint=(1, None), height=20,
+            font_size=sp(12), color=TEXT_DIM,
+            size_hint=(1, None), height=dp(25),
             halign="center", valign="middle"
         )
         lbl_date.bind(size=lambda inst, v: setattr(inst, "text_size", v))
@@ -543,15 +542,15 @@ class HistoriqueCommandeScreen(Screen):
         # Tableau produits
         grid = GridLayout(
             cols=4, size_hint=(1, None),
-            row_default_height=34, row_force_default=True,
-            spacing=1
+            row_default_height=dp(42), row_force_default=True,
+            spacing=dp(1)
         )
         grid.bind(minimum_height=grid.setter('height'))
 
         for h in ["Produit", "Prix unit.", "Qte", "Total"]:
             lbl = Label(text=f"[b]{h}[/b]", markup=True,
-                        font_size=11, color=TEXT_WHITE,
-                        size_hint=(1, None), height=34,
+                        font_size=sp(12), color=TEXT_WHITE,
+                        size_hint=(1, None), height=dp(42),
                         halign="center", valign="middle")
             lbl.bind(size=lambda inst, v: setattr(inst, "text_size", v))
             _bg(lbl, HEADER_BG)
@@ -565,14 +564,14 @@ class HistoriqueCommandeScreen(Screen):
                 str(p.get('quantite', '')),
                 f"{float(p.get('total', 0)):,.0f}"
             ]:
-                lbl = Label(text=val, font_size=11, color=TEXT_WHITE,
-                            size_hint=(1, None), height=34,
+                lbl = Label(text=val, font_size=sp(12), color=TEXT_WHITE,
+                            size_hint=(1, None), height=dp(42),
                             halign="center", valign="middle")
                 lbl.bind(size=lambda inst, v: setattr(inst, "text_size", v))
                 _bg(lbl, rc)
                 grid.add_widget(lbl)
 
-        scroll_g = ScrollView(size_hint=(1, None), height=200,
+        scroll_g = ScrollView(size_hint=(1, None), height=dp(250),
                               do_scroll_y=True, do_scroll_x=False)
         scroll_g.add_widget(grid)
         content.add_widget(scroll_g)
@@ -583,33 +582,33 @@ class HistoriqueCommandeScreen(Screen):
             ("Avance",  f"{commande['avance']:,.0f} Ar", ACCENT),
             ("Reste",   f"{commande['reste']:,.0f} Ar",  ACCENT_RED),
         ]:
-            row = BoxLayout(size_hint=(1, None), height=32, spacing=8)
+            row = BoxLayout(size_hint=(1, None), height=dp(38), spacing=dp(10))
             row.add_widget(Label(text=f"[b]{lbl_txt} :[/b]", markup=True,
-                                 font_size=14, color=TEXT_DIM,
+                                 font_size=sp(15), color=TEXT_DIM,
                                  size_hint=(0.3, 1), halign="right"))
-            row.add_widget(Label(text=val, font_size=14, color=color,
+            row.add_widget(Label(text=val, font_size=sp(15), color=color,
                                  bold=True, size_hint=(0.7, 1), halign="left"))
             content.add_widget(row)
 
         # Boutons
-        btn_box = BoxLayout(size_hint=(1, None), height=45, spacing=10, padding=[10, 0])
+        btn_box = BoxLayout(size_hint=(1, None), height=dp(55), spacing=dp(12), padding=[dp(10), 0])
         btn_close = Button(
             text="FERMER",
-            font_size=12, bold=True,
+            font_size=sp(14), bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_close, ACCENT_BLUE, radius=8)
+        _bg(btn_close, ACCENT_BLUE, radius=dp(10))
 
         btn_pdf = Button(
             text="GÉNÉRER PDF",
-            font_size=12, bold=True,
+            font_size=sp(14), bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_pdf, ACCENT_GREEN, radius=8)
+        _bg(btn_pdf, ACCENT_GREEN, radius=dp(10))
 
         btn_box.add_widget(btn_pdf)
         btn_box.add_widget(btn_close)
@@ -618,9 +617,9 @@ class HistoriqueCommandeScreen(Screen):
         popup = Popup(
             title=f"Détails commande N° {commande_id}",
             content=content,
-            size_hint=(0.95, 0.88),
+            size_hint=(0.95, 0.9),
             background_color=BG_CARD,
-            title_size=14,
+            title_size=sp(16),
             title_color=ACCENT
         )
         btn_close.bind(on_release=popup.dismiss)
@@ -638,7 +637,6 @@ class HistoriqueCommandeScreen(Screen):
                 self.show_message("Erreur", "Commande introuvable")
                 return
 
-            # Récupérer les infos client
             client_info = {'adresse': '', 'nif': '', 'stat': '', 'contact': ''}
             clients_data = get_all_clients()
             for c in clients_data:
@@ -651,20 +649,9 @@ class HistoriqueCommandeScreen(Screen):
                     }
                     break
 
-            # Utiliser le mode de paiement passé ou récupérer de la commande
-            mode_paiement = commande.get("mode_paiement")
+            mode_paiement = commande.get("mode_paiement", "Espèce")
+            numero_cheque = commande.get("numero_cheque", "") if mode_paiement == "Chèque" else ""
 
-            # Valeur par defaut
-            if not mode_paiement:
-                mode_paiement = "Espece"
-
-            # Gestion numero cheque
-            numero_cheque = commande.get("numero_cheque", "")
-
-            if mode_paiement != "Chèque":
-                numero_cheque = ""
-
-            # Générer le PDF
             filename = generer_pdf_facture(
                 commande_id=commande_id,
                 client_nom=commande['client_nom'],
@@ -679,78 +666,71 @@ class HistoriqueCommandeScreen(Screen):
             )
 
             if filename:
-                # Fermer le popup si fourni
                 if popup_to_close:
                     popup_to_close.dismiss()
-
-                # Afficher le popup d'aperçu
                 self.afficher_apercu_pdf(filename, commande_id)
             else:
                 self.show_message("Erreur", "Erreur lors de la génération du PDF")
 
-        except ImportError as e:
-            self.show_message("Erreur", "ReportLab non installé. Installez-le avec:\npip install reportlab")
         except Exception as e:
             self.show_message("Erreur", f"Erreur : {str(e)}")
 
     def afficher_apercu_pdf(self, chemin_pdf, commande_id):
         """Affiche un popup pour visualiser le PDF généré"""
-        content = BoxLayout(orientation='vertical', spacing=12, padding=15)
+        content = BoxLayout(orientation='vertical', spacing=dp(15), padding=dp(18))
         _bg(content, BG_DARK)
 
         content.add_widget(Label(
             text=f"Facture N° {commande_id}[/b]\n\nPDF généré avec succès !",
             markup=True,
-            font_size=13,
+            font_size=sp(15),
             color=TEXT_WHITE,
             size_hint=(1, None),
-            height=60,
+            height=dp(70),
             halign="center"
         ))
 
-        info_box = BoxLayout(orientation='vertical', size_hint=(1, None), height=50, spacing=5)
+        info_box = BoxLayout(orientation='vertical', size_hint=(1, None), height=dp(55), spacing=dp(8))
         info_box.add_widget(Label(
             text=f"{os.path.basename(chemin_pdf)}",
-            font_size=10,
+            font_size=sp(11),
             color=ACCENT,
             halign="center"
         ))
         content.add_widget(info_box)
 
-        btn_box = BoxLayout(orientation='vertical', spacing=8, size_hint=(1, None))
-        btn_box.height = 130
+        btn_box = BoxLayout(orientation='vertical', spacing=dp(10), size_hint=(1, None))
+        btn_box.height = dp(150)
 
         btn_voir = Button(
             text="VISUALISER",
-            size_hint=(1, None), height=38,
-            font_size=12, bold=True,
+            size_hint=(1, None), height=dp(45),
+            font_size=sp(14), bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_voir, ACCENT_BLUE, radius=6)
-        btn_voir.bind(on_release=lambda x: self.visualiser_pdf(chemin_pdf))
+        _bg(btn_voir, ACCENT_BLUE, radius=dp(8))
 
         btn_imprimer = Button(
             text="IMPRIMER",
-            size_hint=(1, None), height=38,
-            font_size=12, bold=True,
+            size_hint=(1, None), height=dp(45),
+            font_size=sp(14), bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_imprimer, ACCENT_PURPLE, radius=6)
-        btn_imprimer.bind(on_release=lambda x: self.imprimer_pdf(chemin_pdf))
+        _bg(btn_imprimer, ACCENT_PURPLE, radius=dp(8))
 
         btn_fermer = Button(
             text="FERMER",
-            size_hint=(1, None), height=38,
-            font_size=11,
+            size_hint=(1, None), height=dp(45),
+            font_size=sp(13),
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_fermer, ACCENT_RED, radius=6)
+        _bg(btn_fermer, ACCENT_RED, radius=dp(8))
 
         btn_box.add_widget(btn_voir)
         btn_box.add_widget(btn_imprimer)
@@ -760,8 +740,9 @@ class HistoriqueCommandeScreen(Screen):
         popup = Popup(
             title="Facture prête",
             content=content,
-            size_hint=(0.9, 0.55),
-            background_color=BG_CARD
+            size_hint=(0.9, 0.6),
+            background_color=BG_CARD,
+            title_size=sp(15)
         )
         btn_fermer.bind(on_release=popup.dismiss)
         popup.open()
@@ -794,54 +775,54 @@ class HistoriqueCommandeScreen(Screen):
             self.show_message("Erreur", f"Erreur d'impression: {e}")
 
     # ═══════════════════════════════════════════════════
-    # POPUP  PAYER  — saisie du montant
+    # POPUP PAYER — saisie du montant
     # ═══════════════════════════════════════════════════
     def ouvrir_popup_payer(self, commande_id, client, reste_actuel):
-        content = BoxLayout(orientation="vertical", spacing=10, padding=14)
+        content = BoxLayout(orientation="vertical", spacing=dp(12), padding=dp(16))
         _bg(content, BG_DARK)
 
         content.add_widget(Label(
             text=f"[b]Commande N° {commande_id}  -  {client}[/b]",
-            markup=True, font_size=13, color=TEXT_WHITE,
-            size_hint=(1, None), height=26
+            markup=True, font_size=sp(15), color=TEXT_WHITE,
+            size_hint=(1, None), height=dp(32)
         ))
         content.add_widget(Label(
             text=f"Reste actuel : {reste_actuel:,.0f} Ar",
-            font_size=13, color=ACCENT_ORANGE,
-            size_hint=(1, None), height=24
+            font_size=sp(15), color=ACCENT_ORANGE,
+            size_hint=(1, None), height=dp(30)
         ))
         content.add_widget(Label(
             text="Montant payé (Ar) :",
-            font_size=12, color=TEXT_WHITE,
-            size_hint=(1, None), height=22, halign="left"
+            font_size=sp(14), color=TEXT_WHITE,
+            size_hint=(1, None), height=dp(28), halign="left"
         ))
 
         montant_input = TextInput(
             text=str(int(reste_actuel)),
             multiline=False,
-            font_size=13,
+            font_size=sp(15),
             foreground_color=TEXT_WHITE,
             background_color=(0.1, 0.16, 0.30, 1),
             size_hint=(1, None),
-            height=42,
-            padding=[8, 8]
+            height=dp(50),
+            padding=[dp(10), dp(10)]
         )
         content.add_widget(montant_input)
 
-        # Mode de paiement avec Espèce, Mvola, Chèque
-        mode_row = BoxLayout(size_hint=(1, None), height=40, spacing=8)
+        # Mode de paiement
+        mode_row = BoxLayout(size_hint=(1, None), height=dp(50), spacing=dp(10))
         mode_row.add_widget(Label(
             text="Mode :",
             size_hint=(0.3, 1),
             color=TEXT_WHITE,
-            font_size=12,
+            font_size=sp(14),
             halign="right"
         ))
         self.mode_paiement_spinner = Spinner(
             text="Espèce",
             values=["Espèce", "Mvola", "Chèque"],
             size_hint=(0.7, 1),
-            font_size=12,
+            font_size=sp(14),
             background_color=(0.1, 0.16, 0.30, 1),
             color=TEXT_WHITE
         )
@@ -849,22 +830,22 @@ class HistoriqueCommandeScreen(Screen):
         content.add_widget(mode_row)
 
         # Numéro de chèque (caché par défaut)
-        self.cheque_row = BoxLayout(size_hint=(1, None), height=0, spacing=8)
+        self.cheque_row = BoxLayout(size_hint=(1, None), height=0, spacing=dp(10))
         self.cheque_row.add_widget(Label(
             text="N° Chèque :",
             size_hint=(0.3, 1),
             color=TEXT_WHITE,
-            font_size=12,
+            font_size=sp(14),
             halign="right"
         ))
         self.numero_cheque_input = TextInput(
             text="",
             multiline=False,
-            font_size=12,
+            font_size=sp(14),
             foreground_color=TEXT_WHITE,
             background_color=(0.1, 0.16, 0.30, 1),
             size_hint=(0.7, 1),
-            padding=[6, 5],
+            padding=[dp(8), dp(8)],
             hint_text="Numéro du chèque"
         )
         self.cheque_row.add_widget(self.numero_cheque_input)
@@ -872,7 +853,7 @@ class HistoriqueCommandeScreen(Screen):
 
         def on_mode_change(spinner, text):
             if text == "Chèque":
-                self.cheque_row.height = 40
+                self.cheque_row.height = dp(50)
                 self.cheque_row.size_hint_y = None
             else:
                 self.cheque_row.height = 0
@@ -881,24 +862,24 @@ class HistoriqueCommandeScreen(Screen):
 
         self.mode_paiement_spinner.bind(text=on_mode_change)
 
-        btns = BoxLayout(size_hint=(1, None), height=42, spacing=10)
+        btns = BoxLayout(size_hint=(1, None), height=dp(55), spacing=dp(12))
         btn_ok = Button(
             text="VALIDER",
-            font_size=13, bold=True,
+            font_size=sp(15), bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_ok, ACCENT_GREEN, radius=8)
+        _bg(btn_ok, ACCENT_GREEN, radius=dp(10))
 
         btn_cancel = Button(
             text="ANNULER",
-            font_size=13,
+            font_size=sp(15),
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_cancel, ACCENT_RED, radius=8)
+        _bg(btn_cancel, ACCENT_RED, radius=dp(10))
 
         btns.add_widget(btn_ok)
         btns.add_widget(btn_cancel)
@@ -907,9 +888,9 @@ class HistoriqueCommandeScreen(Screen):
         popup = Popup(
             title="Paiement du reste",
             content=content,
-            size_hint=(0.88, 0.65),
+            size_hint=(0.9, 0.7),
             background_color=BG_CARD,
-            title_size=13
+            title_size=sp(15)
         )
         btn_cancel.bind(on_release=popup.dismiss)
 
@@ -934,19 +915,20 @@ class HistoriqueCommandeScreen(Screen):
                 return
 
             if montant > reste_actuel:
-                content = BoxLayout(orientation='vertical', spacing=10, padding=10)
+                content = BoxLayout(orientation='vertical', spacing=dp(12), padding=dp(12))
                 content.add_widget(Label(
                     text=f"Le montant saisi ({montant:,.0f} Ar) dépasse\nle reste à payer ({reste_actuel:,.0f} Ar).\n\nVoulez-vous continuer ?",
-                    color=TEXT_WHITE
+                    color=TEXT_WHITE,
+                    font_size=sp(13)
                 ))
-                btn_box = BoxLayout(size_hint=(1, None), height=40, spacing=10)
-                btn_oui = Button(text="OUI", size_hint=(0.5, 1))
-                btn_non = Button(text="NON", size_hint=(0.5, 1))
+                btn_box = BoxLayout(size_hint=(1, None), height=dp(50), spacing=dp(12))
+                btn_oui = Button(text="OUI", size_hint=(0.5, 1), font_size=sp(14))
+                btn_non = Button(text="NON", size_hint=(0.5, 1), font_size=sp(14))
                 btn_box.add_widget(btn_oui)
                 btn_box.add_widget(btn_non)
                 content.add_widget(btn_box)
 
-                confirm_popup = Popup(title="Confirmation", content=content, size_hint=(0.8, 0.35))
+                confirm_popup = Popup(title="Confirmation", content=content, size_hint=(0.85, 0.4))
                 btn_oui.bind(on_release=lambda x: self._executer_paiement(confirm_popup, popup, commande_id, client_nom, reste_actuel, montant, mode_paiement, numero_cheque))
                 btn_non.bind(on_release=confirm_popup.dismiss)
                 confirm_popup.open()
@@ -983,7 +965,7 @@ class HistoriqueCommandeScreen(Screen):
 
             paiement_popup.dismiss()
 
-            message = f" Paiement enregistré !\n\n"
+            message = f"Paiement enregistré !\n\n"
             message += f"Montant payé : {montant:,.0f} Ar\n"
             message += f"Nouveau reste : {nouveau_reste:,.0f} Ar"
             message += f"\nMode : {mode_paiement}"
@@ -1008,7 +990,6 @@ class HistoriqueCommandeScreen(Screen):
                 from pdf_generator import generer_pdf_facture
                 import datetime
 
-                # Mettre à jour la commande avec les nouvelles valeurs
                 commande['avance'] = nouvelle_avance
                 commande['reste'] = nouveau_reste
 
@@ -1026,13 +1007,12 @@ class HistoriqueCommandeScreen(Screen):
                 )
 
                 if filename:
-                    message += f"\n\n Facture PDF générée avec succès !"
-                    # Afficher le popup d'aperçu du PDF
+                    message += f"\n\nFacture PDF générée avec succès !"
                     self.afficher_apercu_pdf(filename, commande_id)
                 else:
-                    message += f"\n\n Erreur lors de la génération du PDF"
+                    message += f"\n\nErreur lors de la génération du PDF"
             except Exception as e:
-                message += f"\n\n✗ Erreur PDF : {str(e)}"
+                message += f"\n\nErreur PDF : {str(e)}"
 
             self.show_message("Succès", message)
             Clock.schedule_once(lambda dt: self.charger_commandes(None), 0.5)
@@ -1042,13 +1022,13 @@ class HistoriqueCommandeScreen(Screen):
 
     # ═══════════════════════════════════════════════════
     def show_message(self, title, message):
-        content = BoxLayout(orientation='vertical', spacing=10, padding=12)
+        content = BoxLayout(orientation='vertical', spacing=dp(12), padding=dp(14))
         _bg(content, BG_DARK)
 
         lbl = Label(
             text=message,
             color=TEXT_WHITE,
-            font_size=11,
+            font_size=sp(13),
             size_hint=(1, 0.8),
             halign="left",
             valign="top",
@@ -1060,20 +1040,21 @@ class HistoriqueCommandeScreen(Screen):
         btn = Button(
             text="OK",
             size_hint=(1, 0.15),
-            font_size=12,
+            font_size=sp(14),
             bold=True,
             background_normal="",
             background_color=ACCENT_GREEN,
             color=TEXT_WHITE
         )
-        _bg(btn, ACCENT_GREEN, radius=6)
+        _bg(btn, ACCENT_GREEN, radius=dp(8))
         content.add_widget(btn)
 
         popup = Popup(
             title=title,
             content=content,
-            size_hint=(0.85, 0.4),
-            background_color=BG_CARD
+            size_hint=(0.85, 0.45),
+            background_color=BG_CARD,
+            title_size=sp(14)
         )
         btn.bind(on_release=popup.dismiss)
         popup.open()

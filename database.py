@@ -1,649 +1,345 @@
-# ===================================================
-# IMPORTATION DES BIBLIOTHEQUES
-# ===================================================
-
-import os
+# database.py
 import sqlite3
-import json
+import os
+from kivy.app import App
 from kivy.utils import platform
-# ===================================================
-# CONFIGURATION DU CHEMIN DE LA BASE DE DONNEES
-# ===================================================
 
-if platform == "android":
+def get_db_path():
+    """Retourne le chemin absolu de la base de données"""
+    if platform == 'android':
+        # Sur Android, utiliser le répertoire de l'application
+        from android.storage import app_storage_path
+        db_path = os.path.join(app_storage_path(), 'gestion_clients.db')
+    else:
+        # Sur PC, utiliser le répertoire courant
+        db_path = 'gestion_clients.db'
+    
+    print(f"Base Android : {db_path}")
+    return db_path
 
-    try:
-        from jnius import autoclass
-
-        PythonActivity = autoclass(
-            'org.kivy.android.PythonActivity'
-        )
-
-        context = PythonActivity.mActivity
-
-        files_dir = context.getFilesDir()
-
-        DB_PATH = os.path.join(
-            files_dir.getAbsolutePath(),
-            "gestion_clients.db"
-        )
-
-        print(f"Base Android : {DB_PATH}")
-
-    except Exception as e:
-
-        print(f"Erreur Android : {e}")
-
-        DB_PATH = "gestion_clients.db"
-
-else:
-
-    DB_PATH = "gestion_clients.db"
-
-    print(f"Base locale : {DB_PATH}")
-
-# ===================================================
-# FONCTION CONNEXION SQLITE
-# ===================================================
-
-def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-
-    # Amélioration stabilité Android
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode=WAL")
-
+def get_db_connection():
+    """Établit et retourne une connexion à la base de données"""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row  # Permet d'accéder aux colonnes par nom
     return conn
 
-
-# ===================================================
-# INITIALISATION BASE DE DONNEES
-# ===================================================
-
 def init_database():
+    """Initialise la base de données avec toutes les tables nécessaires"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            # =========================
-            # TABLE CLIENTS
-            # =========================
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS clients (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nom TEXT NOT NULL,
-                    adresse TEXT,
-                    nif TEXT,
-                    stat TEXT,
-                    contact TEXT,
-                    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            # =========================
-            # TABLE PRODUITS
-            # =========================
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS produits (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nom TEXT NOT NULL,
-                    prix_achat TEXT,
-                    prix_vente TEXT,
-                    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            # =========================
-            # TABLE COMMANDES
-            # =========================
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS commandes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    client_nom TEXT NOT NULL,
-                    produits TEXT,
-                    total REAL DEFAULT 0,
-                    avance REAL DEFAULT 0,
-                    reste REAL DEFAULT 0,
-                    mode_paiement TEXT DEFAULT 'Espece',
-                    numero_cheque TEXT,
-                    date_commande TEXT,
-                    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            conn.commit()
-
-        # Migrations
-        migrer_ajouter_colonne_numero_cheque()
-        ajouter_colonne_mode_paiement()
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Table clients
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS clients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nom TEXT NOT NULL UNIQUE,
+                adresse TEXT,
+                nif TEXT,
+                stat TEXT,
+                contact TEXT
+            )
+        ''')
+        
+        # Table produits
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS produits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nom TEXT NOT NULL UNIQUE,
+                prix_achat REAL DEFAULT 0,
+                prix_vente REAL DEFAULT 0,
+                stock INTEGER DEFAULT 0
+            )
+        ''')
+        
+        # Table commandes
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS commandes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_nom TEXT NOT NULL,
+                total REAL DEFAULT 0,
+                avance REAL DEFAULT 0,
+                reste REAL DEFAULT 0,
+                mode_paiement TEXT DEFAULT 'Espèce',
+                numero_cheque TEXT DEFAULT '',
+                date TEXT NOT NULL,
+                produits TEXT NOT NULL,
+                FOREIGN KEY (client_nom) REFERENCES clients (nom)
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
         print("Base de données initialisée avec succès")
-
         return True
-
+        
     except Exception as e:
-        print(f"Erreur init_database : {e}")
-
+        print(f"Erreur initialisation base: {e}")
+        import traceback
+        traceback.print_exc()
         return False
-
-
-# ===================================================
-# MIGRATIONS
-# ===================================================
-
-def ajouter_colonne_mode_paiement():
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("PRAGMA table_info(commandes)")
-            columns = [col[1] for col in cursor.fetchall()]
-
-            if "mode_paiement" not in columns:
-
-                cursor.execute("""
-                    ALTER TABLE commandes
-                    ADD COLUMN mode_paiement TEXT DEFAULT 'Espece'
-                """)
-
-                conn.commit()
-
-                print("Colonne mode_paiement ajoutée")
-
-            cursor.execute("""
-                UPDATE commandes
-                SET mode_paiement = 'Espece'
-                WHERE mode_paiement IS NULL
-            """)
-
-            conn.commit()
-
-        return True
-
-    except Exception as e:
-        print(f"Erreur migration mode_paiement : {e}")
-
-        return False
-
-
-def migrer_ajouter_colonne_numero_cheque():
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("PRAGMA table_info(commandes)")
-            columns = [col[1] for col in cursor.fetchall()]
-
-            if "numero_cheque" not in columns:
-
-                cursor.execute("""
-                    ALTER TABLE commandes
-                    ADD COLUMN numero_cheque TEXT
-                """)
-
-                conn.commit()
-
-                print("Colonne numero_cheque ajoutée")
-
-        return True
-
-    except Exception as e:
-        print(f"Erreur migration numero_cheque : {e}")
-
-        return False
-
 
 # ===================================================
 # CLIENTS
 # ===================================================
 
 def ajouter_client_db(nom, adresse, nif, stat, contact):
+    """Ajoute un nouveau client dans la base"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                INSERT INTO clients (
-                    nom,
-                    adresse,
-                    nif,
-                    stat,
-                    contact
-                )
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                nom,
-                adresse,
-                nif,
-                stat,
-                contact
-            ))
-
-            conn.commit()
-
-            return cursor.lastrowid
-
-    except Exception as e:
-        print(f"Erreur ajout client : {e}")
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO clients (nom, adresse, nif, stat, contact)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (nom, adresse, nif, stat, contact))
+        conn.commit()
+        client_id = cursor.lastrowid
+        conn.close()
+        print(f"Client '{nom}' ajouté avec l'ID {client_id}")
+        return client_id
+    except sqlite3.IntegrityError:
+        print(f"Erreur: Le client '{nom}' existe déjà")
         return None
-        
+    except Exception as e:
+        print(f"Erreur ajout client: {e}")
+        return None
+
 def get_all_clients():
     """Récupère tous les clients"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM clients ORDER BY nom")
+        cursor.execute('SELECT id, nom, adresse, nif, stat, contact FROM clients ORDER BY nom')
         clients = cursor.fetchall()
         conn.close()
-        
-        # Debug
-        print(f"SQL get_all_clients - Nombre: {len(clients)}")
-        for client in clients:
-            print(f"Client SQL: {client}")
-            
+        print(f"Nombre de clients récupérés: {len(clients)}")
         return clients
     except Exception as e:
         print(f"Erreur get_all_clients: {e}")
+        import traceback
+        traceback.print_exc()
         return []
-def supprimer_client_db(client_id):
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                DELETE FROM clients
-                WHERE id = ?
-            """, (client_id,))
-
-            conn.commit()
-
-        return True
-
-    except Exception as e:
-        print(f"Erreur suppression client : {e}")
-
-        return False
-
 
 def get_clients_count():
+    """Retourne le nombre total de clients"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT COUNT(*) FROM clients")
-
-            return cursor.fetchone()[0]
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM clients')
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
     except Exception as e:
-        print(f"Erreur count clients : {e}")
-
+        print(f"Erreur get_clients_count: {e}")
         return 0
 
+def supprimer_client_db(client_id):
+    """Supprime un client par son ID"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM clients WHERE id = ?', (client_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Erreur suppression client: {e}")
+        return False
+
+def modifier_client_db(client_id, nom, adresse, nif, stat, contact):
+    """Modifie les informations d'un client"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE clients 
+            SET nom = ?, adresse = ?, nif = ?, stat = ?, contact = ?
+            WHERE id = ?
+        ''', (nom, adresse, nif, stat, contact, client_id))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Erreur modification client: {e}")
+        return False
 
 # ===================================================
 # PRODUITS
 # ===================================================
 
 def ajouter_produit_db(nom, prix_achat, prix_vente):
+    """Ajoute un nouveau produit"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                INSERT INTO produits (
-                    nom,
-                    prix_achat,
-                    prix_vente
-                )
-                VALUES (?, ?, ?)
-            """, (
-                nom,
-                float(prix_achat),
-                float(prix_vente)
-            ))
-
-            conn.commit()
-
-            return cursor.lastrowid
-
-    except Exception as e:
-        print(f"Erreur ajout produit : {e}")
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO produits (nom, prix_achat, prix_vente)
+            VALUES (?, ?, ?)
+        ''', (nom, float(prix_achat), float(prix_vente)))
+        conn.commit()
+        produit_id = cursor.lastrowid
+        conn.close()
+        print(f"Produit '{nom}' ajouté avec l'ID {produit_id}")
+        return produit_id
+    except sqlite3.IntegrityError:
+        print(f"Erreur: Le produit '{nom}' existe déjà")
         return None
-def modifier_produit_db(
-    produit_id,
-    nom,
-    prix_achat,
-    prix_vente
-):
-    try:
-        with get_connection() as conn:
-
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                UPDATE produits
-                SET
-                    nom = ?,
-                    prix_achat = ?,
-                    prix_vente = ?
-                WHERE id = ?
-            """, (
-                nom,
-                prix_achat,
-                prix_vente,
-                produit_id
-            ))
-
-            conn.commit()
-
-        return True
-
     except Exception as e:
-        print(f"Erreur modification produit : {e}")
-
-        return False
+        print(f"Erreur ajout produit: {e}")
+        return None
 
 def get_all_produits():
+    """Récupère tous les produits"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT
-                    id,
-                    nom,
-                    prix_achat,
-                    prix_vente
-                FROM produits
-                ORDER BY id DESC
-            """)
-
-            return cursor.fetchall()
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, nom, prix_achat, prix_vente FROM produits ORDER BY nom')
+        produits = cursor.fetchall()
+        conn.close()
+        print(f"Nombre de produits récupérés: {len(produits)}")
+        return produits
     except Exception as e:
-        print(f"Erreur récupération produits : {e}")
-
+        print(f"Erreur get_all_produits: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
-
 def supprimer_produit_db(produit_id):
+    """Supprime un produit par son ID"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                DELETE FROM produits
-                WHERE id = ?
-            """, (produit_id,))
-
-            conn.commit()
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM produits WHERE id = ?', (produit_id,))
+        conn.commit()
+        conn.close()
         return True
-
     except Exception as e:
-        print(f"Erreur suppression produit : {e}")
-
+        print(f"Erreur suppression produit: {e}")
         return False
 
-
-def get_produits_count():
+def modifier_produit_db(produit_id, nom, prix_achat, prix_vente):
+    """Modifie les informations d'un produit"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT COUNT(*) FROM produits")
-
-            return cursor.fetchone()[0]
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE produits 
+            SET nom = ?, prix_achat = ?, prix_vente = ?
+            WHERE id = ?
+        ''', (nom, float(prix_achat), float(prix_vente), produit_id))
+        conn.commit()
+        conn.close()
+        return True
     except Exception as e:
-        print(f"Erreur count produits : {e}")
-
-        return 0
-
+        print(f"Erreur modification produit: {e}")
+        return False
 
 # ===================================================
 # COMMANDES
 # ===================================================
 
-def ajouter_commande_db(
-    client_nom=None,
-    produits=None,
-    total=0,
-    avance=0,
-    reste=0,
-    mode_paiement="Espece",
-    numero_cheque="",
-    date=""
-):
+def ajouter_commande_db(client_nom, produits, total, avance, reste, mode_paiement, numero_cheque, date):
+    """Ajoute une nouvelle commande"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            produits_json = json.dumps(
-                produits if produits else [],
-                ensure_ascii=False
-            )
-
-            cursor.execute("""
-                INSERT INTO commandes (
-                    client_nom,
-                    produits,
-                    total,
-                    avance,
-                    reste,
-                    mode_paiement,
-                    numero_cheque,
-                    date_commande
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                client_nom,
-                produits_json,
-                float(total),
-                float(avance),
-                float(reste),
-                mode_paiement,
-                numero_cheque,
-                date
-            ))
-
-            conn.commit()
-
-            return cursor.lastrowid
-
+        import json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Convertir la liste des produits en JSON
+        produits_json = json.dumps(produits, ensure_ascii=False)
+        
+        cursor.execute('''
+            INSERT INTO commandes (client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits_json))
+        
+        conn.commit()
+        commande_id = cursor.lastrowid
+        conn.close()
+        print(f"Commande N° {commande_id} ajoutée")
+        return commande_id
     except Exception as e:
-        print(f"Erreur ajout commande : {e}")
-
+        print(f"Erreur ajout commande: {e}")
+        import traceback
+        traceback.print_exc()
         return None
-
 
 def get_all_commandes():
+    """Récupère toutes les commandes"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT
-                    id,
-                    client_nom,
-                    total,
-                    avance,
-                    reste,
-                    mode_paiement,
-                    numero_cheque,
-                    date_commande
-                FROM commandes
-                ORDER BY id DESC
-            """)
-
-            return cursor.fetchall()
-
+        import json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, date, produits FROM commandes ORDER BY id DESC')
+        commandes = cursor.fetchall()
+        conn.close()
+        return commandes
     except Exception as e:
-        print(f"Erreur récupération commandes : {e}")
-
+        print(f"Erreur get_all_commandes: {e}")
         return []
-
-
-def get_commandes_client(client_nom):
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT
-                    id,
-                    client_nom,
-                    total,
-                    avance,
-                    reste,
-                    mode_paiement,
-                    numero_cheque,
-                    date_commande
-                FROM commandes
-                WHERE client_nom = ?
-                ORDER BY id DESC
-            """, (client_nom,))
-
-            return cursor.fetchall()
-
-    except Exception as e:
-        print(f"Erreur commandes client : {e}")
-
-        return []
-
 
 def get_commande_by_id(commande_id):
+    """Récupère une commande par son ID avec les produits"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT
-                    id,
-                    client_nom,
-                    produits,
-                    total,
-                    avance,
-                    reste,
-                    mode_paiement,
-                    numero_cheque,
-                    date_commande
-                FROM commandes
-                WHERE id = ?
-            """, (commande_id,))
-
-            commande = cursor.fetchone()
-
-            if commande:
-
-                produits = json.loads(
-                    commande[2]
-                ) if commande[2] else []
-
-                return {
-                    "id": commande[0],
-                    "client_nom": commande[1],
-                    "produits": produits,
-                    "total": commande[3],
-                    "avance": commande[4],
-                    "reste": commande[5],
-                    "mode_paiement": commande[6],
-                    "numero_cheque": commande[7],
-                    "date": commande[8]
-                }
-
-            return None
-
+        import json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits FROM commandes WHERE id = ?', (commande_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            commande = {
+                'id': row[0],
+                'client_nom': row[1],
+                'total': row[2],
+                'avance': row[3],
+                'reste': row[4],
+                'mode_paiement': row[5],
+                'numero_cheque': row[6] if len(row) > 6 else '',
+                'date': row[7] if len(row) > 7 else '',
+                'produits': json.loads(row[8]) if len(row) > 8 and row[8] else []
+            }
+            return commande
+        return None
     except Exception as e:
-        print(f"Erreur get commande : {e}")
-
+        print(f"Erreur get_commande_by_id: {e}")
         return None
 
-
-def supprimer_commande_db(commande_id):
+def get_commandes_client(client_nom):
+    """Récupère toutes les commandes d'un client"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, client_nom, total, avance, reste, date FROM commandes WHERE client_nom = ? ORDER BY id DESC', (client_nom,))
+        commandes = cursor.fetchall()
+        conn.close()
+        return commandes
+    except Exception as e:
+        print(f"Erreur get_commandes_client: {e}")
+        return []
 
-            cursor.execute("""
-                DELETE FROM commandes
+def payer_reste_db(commande_id, montant, nouveau_reste):
+    """Met à jour le reste à payer d'une commande"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Récupérer l'avance actuelle
+        cursor.execute('SELECT avance FROM commandes WHERE id = ?', (commande_id,))
+        row = cursor.fetchone()
+        if row:
+            nouvelle_avance = row[0] + montant
+            cursor.execute('''
+                UPDATE commandes 
+                SET avance = ?, reste = ?
                 WHERE id = ?
-            """, (commande_id,))
-
+            ''', (nouvelle_avance, nouveau_reste, commande_id))
             conn.commit()
-
+        
+        conn.close()
         return True
-
     except Exception as e:
-        print(f"Erreur suppression commande : {e}")
-
+        print(f"Erreur payer_reste_db: {e}")
         return False
-
-
-def payer_reste_db(commande_id, montant_paye, nouveau_reste):
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                UPDATE commandes
-                SET
-                    avance = avance + ?,
-                    reste = ?
-                WHERE id = ?
-            """, (
-                float(montant_paye),
-                float(nouveau_reste),
-                commande_id
-            ))
-
-            conn.commit()
-
-        return True
-
-    except Exception as e:
-        print(f"Erreur payer_reste_db : {e}")
-
-        return False
-
-
-def get_commandes_count():
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM commandes
-            """)
-
-            return cursor.fetchone()[0]
-
-    except Exception as e:
-        print(f"Erreur count commandes : {e}")
-
-        return 0
-
-
-def get_commandes_count_by_client(client_nom):
-    try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM commandes
-                WHERE client_nom = ?
-            """, (client_nom,))
-
-            return cursor.fetchone()[0]
-
-    except Exception as e:
-        print(f"Erreur count commandes client : {e}")
-
-        return 0

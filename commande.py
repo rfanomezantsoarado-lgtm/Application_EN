@@ -692,12 +692,18 @@ class CommandeScreen(Screen):
         elif self.client_details:
             self.client_details.text = ""
 
-    def on_produit_select(self, spinner, text):
-        if text != "Choisir un produit":
-            for p in self.produits_disponibles:
-                if p['nom'] == text:
-                    self.prix_vente_client.text = str(p['prix_vente'])
-                    break
+     def on_produit_select(self, spinner, text):
+      print(f"Produit sélectionné: {text}")  # Debug
+      if text != "Choisir un produit" and text:
+          for p in self.produits_disponibles:
+              if p['nom'] == text:
+                  prix = str(p['prix_vente'])
+                  self.prix_vente_client.text = prix
+                  print(f"Prix trouvé: {prix}")  # Debug
+                  break
+          else:
+              print(f"Produit '{text}' non trouvé dans la liste")
+              self.prix_vente_client.text = ""
 
     def on_quantite_change(self, instance, value):
         if value and not value.isdigit():

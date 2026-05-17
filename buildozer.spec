@@ -81,6 +81,8 @@ android.enable_androidx = True
 # (str) Python-for-android branch
 #p4a.branch = develop
 
+p4a.local_recipes = ./recipes
+
 [buildozer]
 
 log_level = 2

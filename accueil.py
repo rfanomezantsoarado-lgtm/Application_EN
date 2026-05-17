@@ -224,37 +224,6 @@ class AccueilScreen(Screen):
         layout.add_widget(self.drawer)
 
         # ───────────────────────────────────────────────
-        # TITRE CENTRAL (optionnel pour remplir l'espace)
-        # ───────────────────────────────────────────────
-        title_label = Label(
-            text="[b]E & N ENTREPRISE[/b]",
-            markup=True,
-            font_size=sp(32),
-            color=(1, 1, 1, 0.95),
-            size_hint=(1, None),
-            height=dp(80),
-            pos_hint={"center_x": 0.5, "center_y": 0.5},
-            halign="center",
-            valign="middle"
-        )
-        title_label.bind(size=lambda inst, v: setattr(inst, "text_size", v))
-        layout.add_widget(title_label)
-        
-        # Sous-titre
-        subtitle_label = Label(
-            text="Materiaux de Construction",
-            font_size=sp(18),
-            color=(0.8, 0.8, 0.9, 0.9),
-            size_hint=(1, None),
-            height=dp(40),
-            pos_hint={"center_x": 0.5, "center_y": 0.4},
-            halign="center",
-            valign="middle"
-        )
-        subtitle_label.bind(size=lambda inst, v: setattr(inst, "text_size", v))
-        layout.add_widget(subtitle_label)
-
-        # ───────────────────────────────────────────────
         # FOOTER (en bas)
         # ───────────────────────────────────────────────
         layout.add_widget(Label(

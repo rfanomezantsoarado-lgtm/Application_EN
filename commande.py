@@ -591,44 +591,93 @@ class CommandeScreen(Screen):
         except Exception as e:
             print(f"Erreur init: {e}")
 
+    def charger_clients(self):
+      try:
+          clients_data = get_all_clients()
+          self.clients_disponibles = []
+          lst = []
+          
+          print("=== DEBUG CLIENTS ===")  # Debug
+          print(f"Nombre de clients récupérés: {len(clients_data)}")
+          
+          for c in clients_data:
+              print(f"Client brut: {c}")  # Debug - voir la structure
+              
+              if len(c) >= 5:
+                  # Si la première colonne est un ID numérique, prenez l'index 1 pour le nom
+                  # Sinon, prenez l'index 0
+                  if isinstance(c[0], int) and c[0] is not None:
+                      # Structure avec ID
+                      nom_client = str(c[1]) if c[1] else "Sans nom"
+                      client_dict = {
+                          'nom': nom_client,
+                          'adresse': str(c[2]) if len(c) > 2 and c[2] else "",
+                          'nif': str(c[3]) if len(c) > 3 and c[3] else "",
+                          'stat': str(c[4]) if len(c) > 4 and c[4] else "",
+                          'contact': str(c[5]) if len(c) > 5 and c[5] else ""
+                      }
+                  else:
+                      # Structure sans ID
+                      nom_client = str(c[0]) if c[0] else "Sans nom"
+                      client_dict = {
+                          'nom': nom_client,
+                          'adresse': str(c[1]) if len(c) > 1 and c[1] else "",
+                          'nif': str(c[2]) if len(c) > 2 and c[2] else "",
+                          'stat': str(c[3]) if len(c) > 3 and c[3] else "",
+                          'contact': str(c[4]) if len(c) > 4 and c[4] else ""
+                      }
+                  
+                  self.clients_disponibles.append(client_dict)
+                  lst.append(nom_client)
+                  print(f"Client ajouté: {nom_client}")  # Debug
+          
+          if self.client_spinner:
+              self.client_spinner.values = lst
+              print(f"Liste clients spinner: {lst}")  # Debug
+              
+      except Exception as e:
+          print(f"Erreur chargement clients: {e}")
+          import traceback
+          traceback.print_exc()
+
     def charger_produits(self):
         try:
             produits_data = get_all_produits()
             self.produits_disponibles = []
             lst = []
+            
+            print("=== DEBUG PRODUITS ===")  # Debug
+            print(f"Nombre de produits récupérés: {len(produits_data)}")
+            
             for p in produits_data:
+                print(f"Produit brut: {p}")  # Debug
+                
+                # Adapter selon la structure de votre base de données
                 if len(p) >= 3:
-                    nom = str(p[0])
-                    self.produits_disponibles.append(
-                        {'nom': nom, 'prix_vente': str(p[2]) if p[2] else "0"}
-                    )
-                    lst.append(nom)
+                    # Si la première colonne est un ID
+                    if isinstance(p[0], int) and p[0] is not None:
+                        nom_produit = str(p[1]) if p[1] else "Sans nom"
+                        prix_vente = str(p[3]) if len(p) > 3 and p[3] else "0"
+                    else:
+                        nom_produit = str(p[0]) if p[0] else "Sans nom"
+                        prix_vente = str(p[2]) if len(p) > 2 and p[2] else "0"
+                    
+                    self.produits_disponibles.append({
+                        'nom': nom_produit, 
+                        'prix_vente': prix_vente
+                    })
+                    lst.append(nom_produit)
+                    print(f"Produit ajouté: {nom_produit}, Prix: {prix_vente}")  # Debug
+                    
             if self.produit_spinner:
                 self.produit_spinner.values = lst
+                print(f"Liste produits spinner: {lst}")  # Debug
+                
         except Exception as e:
-            print(f"Erreur produits: {e}")
-
-    def charger_clients(self):
-        try:
-            clients_data = get_all_clients()
-            self.clients_disponibles = []
-            lst = []
-            for c in clients_data:
-                if len(c) >= 5:
-                    self.clients_disponibles.append({
-                        'nom': str(c[0]),
-                        'adresse': str(c[1]) if c[1] else "",
-                        'nif': str(c[2]) if c[2] else "",
-                        'stat': str(c[3]) if c[3] else "",
-                        'contact': str(c[4]) if c[4] else ""
-                    })
-                    lst.append(str(c[0]))
-            if self.client_spinner:
-                self.client_spinner.values = lst
-        except Exception as e:
-            print(f"Erreur clients: {e}")
-
-    def on_client_select(self, spinner, text):
+            print(f"Erreur chargement produits: {e}")
+            import traceback
+            traceback.print_exc()
+      def on_client_select(self, spinner, text):
         if text != "Choisir un client" and self.client_details:
             for c in self.clients_disponibles:
                 if c['nom'] == text:

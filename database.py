@@ -230,33 +230,25 @@ def ajouter_client_db(nom, adresse, nif, stat, contact):
         print(f"Erreur ajout client : {e}")
 
         return None
-
-
+        
 def get_all_clients():
+    """Récupère tous les clients"""
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT
-                    id,
-                    nom,
-                    adresse,
-                    nif,
-                    stat,
-                    contact
-                FROM clients
-                ORDER BY id DESC
-            """)
-
-            return cursor.fetchall()
-
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM clients ORDER BY nom")
+        clients = cursor.fetchall()
+        conn.close()
+        
+        # Debug
+        print(f"SQL get_all_clients - Nombre: {len(clients)}")
+        for client in clients:
+            print(f"Client SQL: {client}")
+            
+        return clients
     except Exception as e:
-        print(f"Erreur récupération clients : {e}")
-
+        print(f"Erreur get_all_clients: {e}")
         return []
-
-
 def supprimer_client_db(client_id):
     try:
         with get_connection() as conn:

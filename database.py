@@ -14,7 +14,7 @@ def get_db_path():
         # Sur PC, utiliser le répertoire courant
         db_path = 'gestion_clients.db'
     
-    print(f"Base Android : {db_path}")
+    print(f"Base de données : {db_path}")
     return db_path
 
 def get_db_connection():
@@ -53,7 +53,11 @@ def init_database():
             )
         ''')
         
-        # Table commandes
+        # Vérifier si la colonne depot_sortie existe dans la table commandes
+        cursor.execute("PRAGMA table_info(commandes)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        # Table commandes avec vérification de l'existence des colonnes
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS commandes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,10 +68,17 @@ def init_database():
                 mode_paiement TEXT DEFAULT 'Espèce',
                 numero_cheque TEXT DEFAULT '',
                 date TEXT NOT NULL,
-                produits TEXT NOT NULL,
-                FOREIGN KEY (client_nom) REFERENCES clients (nom)
+                produits TEXT NOT NULL
             )
         ''')
+        
+        # Ajouter la colonne depot_sortie si elle n'existe pas
+        if 'depot_sortie' not in columns:
+            try:
+                cursor.execute('ALTER TABLE commandes ADD COLUMN depot_sortie TEXT DEFAULT "Dépôt principal"')
+                print("Colonne depot_sortie ajoutée avec succès")
+            except Exception as e:
+                print(f"Erreur lors de l'ajout de depot_sortie: {e}")
         
         conn.commit()
         conn.close()
@@ -239,8 +250,8 @@ def modifier_produit_db(produit_id, nom, prix_achat, prix_vente):
 # COMMANDES
 # ===================================================
 
-def ajouter_commande_db(client_nom, produits, total, avance, reste, mode_paiement, numero_cheque, date):
-    """Ajoute une nouvelle commande"""
+def ajouter_commande_db(client_nom, produits, total, avance, reste, mode_paiement, numero_cheque, date, depot_sortie="Dépôt principal"):
+    """Ajoute une nouvelle commande avec dépôt de sortie"""
     try:
         import json
         conn = get_db_connection()
@@ -250,14 +261,14 @@ def ajouter_commande_db(client_nom, produits, total, avance, reste, mode_paiemen
         produits_json = json.dumps(produits, ensure_ascii=False)
         
         cursor.execute('''
-            INSERT INTO commandes (client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits_json))
+            INSERT INTO commandes (client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits, depot_sortie)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits_json, depot_sortie))
         
         conn.commit()
         commande_id = cursor.lastrowid
         conn.close()
-        print(f"Commande N° {commande_id} ajoutée")
+        print(f"Commande N° {commande_id} ajoutée avec dépôt: {depot_sortie}")
         return commande_id
     except Exception as e:
         print(f"Erreur ajout commande: {e}")
@@ -266,12 +277,21 @@ def ajouter_commande_db(client_nom, produits, total, avance, reste, mode_paiemen
         return None
 
 def get_all_commandes():
-    """Récupère toutes les commandes"""
+    """Récupère toutes les commandes avec dépôt de sortie"""
     try:
         import json
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, date, produits FROM commandes ORDER BY id DESC')
+        
+        # Vérifier si la colonne depot_sortie existe
+        cursor.execute("PRAGMA table_info(commandes)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'depot_sortie' in columns:
+            cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, date, produits, depot_sortie FROM commandes ORDER BY id DESC')
+        else:
+            cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, date, produits FROM commandes ORDER BY id DESC')
+        
         commandes = cursor.fetchall()
         conn.close()
         return commandes
@@ -280,29 +300,57 @@ def get_all_commandes():
         return []
 
 def get_commande_by_id(commande_id):
-    """Récupère une commande par son ID avec les produits"""
+    """Récupère une commande par son ID avec les produits et le dépôt de sortie"""
     try:
         import json
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits FROM commandes WHERE id = ?', (commande_id,))
-        row = cursor.fetchone()
-        conn.close()
         
-        if row:
-            commande = {
-                'id': row[0],
-                'client_nom': row[1],
-                'total': row[2],
-                'avance': row[3],
-                'reste': row[4],
-                'mode_paiement': row[5],
-                'numero_cheque': row[6] if len(row) > 6 else '',
-                'date': row[7] if len(row) > 7 else '',
-                'produits': json.loads(row[8]) if len(row) > 8 and row[8] else []
-            }
-            return commande
-        return None
+        # Vérifier si la colonne depot_sortie existe
+        cursor.execute("PRAGMA table_info(commandes)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'depot_sortie' in columns:
+            cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits, depot_sortie FROM commandes WHERE id = ?', (commande_id,))
+            row = cursor.fetchone()
+            
+            if row:
+                commande = {
+                    'id': row[0],
+                    'client_nom': row[1],
+                    'total': row[2],
+                    'avance': row[3],
+                    'reste': row[4],
+                    'mode_paiement': row[5],
+                    'numero_cheque': row[6] if len(row) > 6 else '',
+                    'date': row[7] if len(row) > 7 else '',
+                    'produits': json.loads(row[8]) if len(row) > 8 and row[8] else [],
+                    'depot_sortie': row[9] if len(row) > 9 and row[9] else "Dépôt principal"
+                }
+            else:
+                commande = None
+        else:
+            cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, numero_cheque, date, produits FROM commandes WHERE id = ?', (commande_id,))
+            row = cursor.fetchone()
+            
+            if row:
+                commande = {
+                    'id': row[0],
+                    'client_nom': row[1],
+                    'total': row[2],
+                    'avance': row[3],
+                    'reste': row[4],
+                    'mode_paiement': row[5],
+                    'numero_cheque': row[6] if len(row) > 6 else '',
+                    'date': row[7] if len(row) > 7 else '',
+                    'produits': json.loads(row[8]) if len(row) > 8 and row[8] else [],
+                    'depot_sortie': "Dépôt principal"
+                }
+            else:
+                commande = None
+        
+        conn.close()
+        return commande
     except Exception as e:
         print(f"Erreur get_commande_by_id: {e}")
         return None
@@ -312,7 +360,16 @@ def get_commandes_client(client_nom):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT id, client_nom, total, avance, reste, date FROM commandes WHERE client_nom = ? ORDER BY id DESC', (client_nom,))
+        
+        # Vérifier si la colonne depot_sortie existe
+        cursor.execute("PRAGMA table_info(commandes)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'depot_sortie' in columns:
+            cursor.execute('SELECT id, client_nom, total, avance, reste, date, depot_sortie FROM commandes WHERE client_nom = ? ORDER BY id DESC', (client_nom,))
+        else:
+            cursor.execute('SELECT id, client_nom, total, avance, reste, date FROM commandes WHERE client_nom = ? ORDER BY id DESC', (client_nom,))
+        
         commandes = cursor.fetchall()
         conn.close()
         return commandes
@@ -342,4 +399,50 @@ def payer_reste_db(commande_id, montant, nouveau_reste):
         return True
     except Exception as e:
         print(f"Erreur payer_reste_db: {e}")
+        return False
+
+def get_commandes_with_depot():
+    """Récupère toutes les commandes avec leur dépôt de sortie (fonction utilitaire)"""
+    try:
+        import json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Vérifier si la colonne depot_sortie existe
+        cursor.execute("PRAGMA table_info(commandes)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'depot_sortie' in columns:
+            cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, date, depot_sortie FROM commandes ORDER BY id DESC')
+        else:
+            cursor.execute('SELECT id, client_nom, total, avance, reste, mode_paiement, date FROM commandes ORDER BY id DESC')
+        
+        commandes = cursor.fetchall()
+        conn.close()
+        return commandes
+    except Exception as e:
+        print(f"Erreur get_commandes_with_depot: {e}")
+        return []
+
+def mise_a_jour_base_depot_sortie():
+    """Fonction utilitaire pour mettre à jour la base existante avec la colonne depot_sortie"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Vérifier si la colonne existe déjà
+        cursor.execute("PRAGMA table_info(commandes)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'depot_sortie' not in columns:
+            cursor.execute('ALTER TABLE commandes ADD COLUMN depot_sortie TEXT DEFAULT "Dépôt principal"')
+            conn.commit()
+            print("Colonne depot_sortie ajoutée avec succès")
+        else:
+            print("La colonne depot_sortie existe déjà")
+        
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Erreur mise à jour base: {e}")
         return False

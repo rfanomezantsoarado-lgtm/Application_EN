@@ -18,8 +18,30 @@ import os
 import datetime
 import subprocess
 import sys
+from kivy.utils import platform
 
-from pdf_generator import generer_pdf_facture
+# Remplacer pdf_generator par image_generator
+from image_generator import generer_image_facture
+
+# Import pour le partage sur Android
+ANDROID_AVAILABLE = False
+if platform == 'android':
+    try:
+        from android import activity
+        from android.permissions import request_permissions, Permission
+        from jnius import autoclass
+        ANDROID_AVAILABLE = True
+        
+        # Classes Android pour partage
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        Intent = autoclass('android.content.Intent')
+        Uri = autoclass('android.net.Uri')
+        File = autoclass('java.io.File')
+        MediaStore = autoclass('android.provider.MediaStore')
+        Context = autoclass('android.content.Context')
+        Build = autoclass('android.os.Build')
+    except ImportError:
+        pass
 
 # ===================================================
 # COULEURS
@@ -539,6 +561,17 @@ class HistoriqueCommandeScreen(Screen):
 
         content.add_widget(header)
 
+        # Dépôt de sortie
+        depot_sortie = commande.get('depot_sortie', 'Dépôt principal')
+        depot_box = BoxLayout(size_hint=(1, None), height=dp(35), spacing=dp(10), padding=[dp(10), 0])
+        _bg(depot_box, (0.15, 0.20, 0.35, 1), radius=dp(6))
+        depot_box.add_widget(Label(
+            text=f"DÉPÔT DE SORTIE : {depot_sortie}",
+            font_size=sp(12), color=ACCENT_ORANGE,
+            halign="center", valign="middle", bold=True
+        ))
+        content.add_widget(depot_box)
+
         # Tableau produits
         grid = GridLayout(
             cols=4, size_hint=(1, None),
@@ -590,6 +623,16 @@ class HistoriqueCommandeScreen(Screen):
                                  bold=True, size_hint=(0.7, 1), halign="left"))
             content.add_widget(row)
 
+        # Mode de paiement
+        mode_paiement = commande.get('mode_paiement', 'Espèce')
+        mode_row = BoxLayout(size_hint=(1, None), height=dp(38), spacing=dp(10))
+        mode_row.add_widget(Label(text=f"[b]Mode :[/b]", markup=True,
+                                   font_size=sp(13), color=TEXT_DIM,
+                                   size_hint=(0.3, 1), halign="right"))
+        mode_row.add_widget(Label(text=mode_paiement, font_size=sp(13), color=ACCENT_ORANGE,
+                                   bold=True, size_hint=(0.7, 1), halign="left"))
+        content.add_widget(mode_row)
+
         # Boutons
         btn_box = BoxLayout(size_hint=(1, None), height=dp(55), spacing=dp(12), padding=[dp(10), 0])
         btn_close = Button(
@@ -602,7 +645,7 @@ class HistoriqueCommandeScreen(Screen):
         _bg(btn_close, ACCENT_BLUE, radius=dp(10))
 
         btn_pdf = Button(
-            text="GÉNÉRER PDF",
+            text="GÉNÉRER FACTURE",
             font_size=sp(14), bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
@@ -627,10 +670,10 @@ class HistoriqueCommandeScreen(Screen):
         popup.open()
 
     # ═══════════════════════════════════════════════════
-    # GÉNÉRER ET AFFICHER FACTURE
+    # GÉNÉRER ET AFFICHER FACTURE (IMAGE)
     # ═══════════════════════════════════════════════════
     def generer_et_afficher_facture(self, commande_id, popup_to_close=None, mode_paiement=None, numero_cheque=""):
-        """Génère une facture PDF et l'affiche dans une popup"""
+        """Génère une facture au format image JPEG"""
         try:
             commande = get_commande_by_id(commande_id)
             if not commande:
@@ -640,19 +683,31 @@ class HistoriqueCommandeScreen(Screen):
             client_info = {'adresse': '', 'nif': '', 'stat': '', 'contact': ''}
             clients_data = get_all_clients()
             for c in clients_data:
-                if len(c) >= 5 and str(c[0]) == commande['client_nom']:
-                    client_info = {
-                        'adresse': str(c[1]) if c[1] else "",
-                        'nif': str(c[2]) if c[2] else "",
-                        'stat': str(c[3]) if c[3] else "",
-                        'contact': str(c[4]) if c[4] else ""
-                    }
-                    break
+                if len(c) >= 5:
+                    if isinstance(c[0], int) and c[0] is not None:
+                        if str(c[1]) == commande['client_nom']:
+                            client_info = {
+                                'adresse': str(c[2]) if len(c) > 2 and c[2] else "",
+                                'nif': str(c[3]) if len(c) > 3 and c[3] else "",
+                                'stat': str(c[4]) if len(c) > 4 and c[4] else "",
+                                'contact': str(c[5]) if len(c) > 5 and c[5] else ""
+                            }
+                            break
+                    else:
+                        if str(c[0]) == commande['client_nom']:
+                            client_info = {
+                                'adresse': str(c[1]) if len(c) > 1 and c[1] else "",
+                                'nif': str(c[2]) if len(c) > 2 and c[2] else "",
+                                'stat': str(c[3]) if len(c) > 3 and c[3] else "",
+                                'contact': str(c[4]) if len(c) > 4 and c[4] else ""
+                            }
+                            break
 
             mode_paiement = commande.get("mode_paiement", "Espèce")
             numero_cheque = commande.get("numero_cheque", "") if mode_paiement == "Chèque" else ""
+            depot_sortie = commande.get("depot_sortie", "Dépôt principal")
 
-            filename = generer_pdf_facture(
+            filename = generer_image_facture(
                 commande_id=commande_id,
                 client_nom=commande['client_nom'],
                 client_info=client_info,
@@ -662,26 +717,29 @@ class HistoriqueCommandeScreen(Screen):
                 reste=float(commande.get('reste', 0)),
                 date_str=commande.get('date', datetime.datetime.now().strftime("%d/%m/%Y %H:%M")),
                 mode_paiement=mode_paiement,
+                depot_sortie=depot_sortie,
                 numero_cheque=numero_cheque
             )
 
             if filename:
                 if popup_to_close:
                     popup_to_close.dismiss()
-                self.afficher_apercu_pdf(filename, commande_id)
+                self.afficher_apercu_image(filename, commande_id)
             else:
-                self.show_message("Erreur", "Erreur lors de la génération du PDF")
+                self.show_message("Erreur", "Erreur lors de la génération de l'image")
 
         except Exception as e:
             self.show_message("Erreur", f"Erreur : {str(e)}")
 
-    def afficher_apercu_pdf(self, chemin_pdf, commande_id):
-        """Affiche un popup pour visualiser le PDF généré"""
+    def afficher_apercu_image(self, chemin_image, commande_id):
+        """Affiche un popup pour visualiser l'image générée"""
+        from kivy.uix.image import Image as KivyImage
+        
         content = BoxLayout(orientation='vertical', spacing=dp(15), padding=dp(18))
         _bg(content, BG_DARK)
 
         content.add_widget(Label(
-            text=f"Facture N° {commande_id}[/b]\n\nPDF généré avec succès !",
+            text=f"Facture N° {commande_id}[/b]\n\nImage générée avec succès !",
             markup=True,
             font_size=sp(15),
             color=TEXT_WHITE,
@@ -690,9 +748,22 @@ class HistoriqueCommandeScreen(Screen):
             halign="center"
         ))
 
-        info_box = BoxLayout(orientation='vertical', size_hint=(1, None), height=dp(55), spacing=dp(8))
+        # Aperçu de l'image
+        try:
+            preview = KivyImage(
+                source=chemin_image,
+                size_hint=(1, None),
+                height=dp(180),
+                allow_stretch=True,
+                keep_ratio=True
+            )
+            content.add_widget(preview)
+        except:
+            pass
+
+        info_box = BoxLayout(orientation='vertical', size_hint=(1, None), height=dp(40), spacing=dp(8))
         info_box.add_widget(Label(
-            text=f"{os.path.basename(chemin_pdf)}",
+            text=f"{os.path.basename(chemin_image)}",
             font_size=sp(11),
             color=ACCENT,
             halign="center"
@@ -700,20 +771,32 @@ class HistoriqueCommandeScreen(Screen):
         content.add_widget(info_box)
 
         btn_box = BoxLayout(orientation='vertical', spacing=dp(10), size_hint=(1, None))
-        btn_box.height = dp(150)
+        btn_box.height = dp(200)
 
-        btn_voir = Button(
-            text="VISUALISER",
+        btn_partager = Button(
+            text="PARTAGER",
             size_hint=(1, None), height=dp(45),
             font_size=sp(14), bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_voir, ACCENT_BLUE, radius=dp(8))
+        _bg(btn_partager, ACCENT_BLUE, radius=dp(8))
+        btn_partager.bind(on_release=lambda x: self.partager_image(chemin_image))
+
+        btn_enregistrer = Button(
+            text="ENREGISTRER SUR LE TÉLÉPHONE",
+            size_hint=(1, None), height=dp(45),
+            font_size=sp(14), bold=True,
+            background_normal="",
+            background_color=(0, 0, 0, 0),
+            color=TEXT_WHITE
+        )
+        _bg(btn_enregistrer, ACCENT_GREEN, radius=dp(8))
+        btn_enregistrer.bind(on_release=lambda x: self.enregistrer_sur_telephone(chemin_image))
 
         btn_imprimer = Button(
-            text="IMPRIMER",
+            text="IMPRIMER (NB80)",
             size_hint=(1, None), height=dp(45),
             font_size=sp(14), bold=True,
             background_normal="",
@@ -721,6 +804,7 @@ class HistoriqueCommandeScreen(Screen):
             color=TEXT_WHITE
         )
         _bg(btn_imprimer, ACCENT_PURPLE, radius=dp(8))
+        btn_imprimer.bind(on_release=lambda x: self.imprimer_image(chemin_image))
 
         btn_fermer = Button(
             text="FERMER",
@@ -732,7 +816,8 @@ class HistoriqueCommandeScreen(Screen):
         )
         _bg(btn_fermer, ACCENT_RED, radius=dp(8))
 
-        btn_box.add_widget(btn_voir)
+        btn_box.add_widget(btn_partager)
+        btn_box.add_widget(btn_enregistrer)
         btn_box.add_widget(btn_imprimer)
         btn_box.add_widget(btn_fermer)
         content.add_widget(btn_box)
@@ -740,37 +825,78 @@ class HistoriqueCommandeScreen(Screen):
         popup = Popup(
             title="Facture prête",
             content=content,
-            size_hint=(0.9, 0.6),
+            size_hint=(0.9, 0.7),
             background_color=BG_CARD,
             title_size=sp(15)
         )
         btn_fermer.bind(on_release=popup.dismiss)
         popup.open()
 
-    def visualiser_pdf(self, chemin_pdf):
-        """Ouvre le PDF avec l'application par défaut"""
+    def partager_image(self, chemin_image):
+        """Partage l'image via les applications disponibles"""
         try:
-            if sys.platform == 'win32':
-                os.startfile(chemin_pdf)
-            elif sys.platform == 'darwin':
-                subprocess.run(['open', chemin_pdf])
+            if ANDROID_AVAILABLE:
+                # Partage sur Android
+                intent = Intent()
+                intent.setAction(Intent.ACTION_SEND)
+                intent.setType("image/jpeg")
+                
+                file = File(chemin_image)
+                uri = Uri.fromFile(file)
+                intent.putExtra(Intent.EXTRA_STREAM, uri)
+                
+                chooser = Intent.createChooser(intent, "Partager la facture")
+                PythonActivity.mActivity.startActivity(chooser)
+                self.show_message("Succès", "Partage lancé")
             else:
-                subprocess.run(['xdg-open', chemin_pdf])
+                import subprocess
+                if sys.platform == 'win32':
+                    subprocess.run(['explorer', '/select,', chemin_image])
+                elif sys.platform == 'darwin':
+                    subprocess.run(['open', '-R', chemin_image])
+                else:
+                    subprocess.run(['xdg-open', os.path.dirname(chemin_image)])
+                self.show_message("Info", f"Image disponible: {chemin_image}")
         except Exception as e:
-            self.show_message("Erreur", f"Impossible d'ouvrir le PDF: {e}")
+            self.show_message("Erreur", f"Erreur de partage: {e}")
 
-    def imprimer_pdf(self, chemin_pdf):
-        """Envoie le PDF à l'impression"""
+    def enregistrer_sur_telephone(self, chemin_image):
+        """Enregistre l'image dans la galerie du téléphone"""
+        try:
+            if ANDROID_AVAILABLE:
+                # Pour Android, enregistrer dans les médias
+                from android.permissions import request_permissions, Permission
+                request_permissions([Permission.WRITE_EXTERNAL_STORAGE])
+                
+                contentValues = MediaStore.Images.Media.getContentValues(
+                    PythonActivity.mActivity, 
+                    File(chemin_image), 
+                    None
+                )
+                uri = PythonActivity.mActivity.getContentResolver().insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
+                    contentValues
+                )
+                self.show_message("Succès", "Facture enregistrée dans la galerie")
+            else:
+                self.show_message("Info", f"Image enregistrée: {chemin_image}")
+        except Exception as e:
+            self.show_message("Erreur", f"Erreur d'enregistrement: {e}")
+
+    def imprimer_image(self, chemin_image):
+        """Prépare l'impression au format NB80"""
         try:
             if sys.platform == 'win32':
-                subprocess.run(['print', chemin_pdf], shell=True)
-                self.show_message("Impression", "Impression envoyée")
+                os.startfile(chemin_image, "print")
+            elif sys.platform == 'darwin':
+                subprocess.run(['open', chemin_image])
             else:
-                self.show_message(
-                    "Impression",
-                    f"Le fichier PDF est disponible ici:\n{chemin_pdf}\n\n"
-                    "Ouvrez-le avec une application PDF pour imprimer."
-                )
+                subprocess.run(['xdg-open', chemin_image])
+            self.show_message(
+                "Impression",
+                f"Ouvrez l'image et utilisez l'impression.\n"
+                "Pour l'impression NB80, réglez le format papier sur 80mm."
+            )
         except Exception as e:
             self.show_message("Erreur", f"Erreur d'impression: {e}")
 
@@ -851,6 +977,28 @@ class HistoriqueCommandeScreen(Screen):
         self.cheque_row.add_widget(self.numero_cheque_input)
         content.add_widget(self.cheque_row)
 
+        # Dépôt de sortie
+        depot_row = BoxLayout(size_hint=(1, None), height=dp(50), spacing=dp(10))
+        depot_row.add_widget(Label(
+            text="Dépôt sortie :",
+            size_hint=(0.3, 1),
+            color=TEXT_WHITE,
+            font_size=sp(14),
+            halign="right"
+        ))
+        self.depot_sortie_input = TextInput(
+            text="Dépôt principal",
+            multiline=False,
+            font_size=sp(14),
+            foreground_color=TEXT_WHITE,
+            background_color=(0.1, 0.16, 0.30, 1),
+            size_hint=(0.7, 1),
+            padding=[dp(8), dp(8)],
+            hint_text="Dépôt de sortie"
+        )
+        depot_row.add_widget(self.depot_sortie_input)
+        content.add_widget(depot_row)
+
         def on_mode_change(spinner, text):
             if text == "Chèque":
                 self.cheque_row.height = dp(50)
@@ -888,7 +1036,7 @@ class HistoriqueCommandeScreen(Screen):
         popup = Popup(
             title="Paiement du reste",
             content=content,
-            size_hint=(0.9, 0.7),
+            size_hint=(0.9, 0.8),
             background_color=BG_CARD,
             title_size=sp(15)
         )
@@ -897,13 +1045,14 @@ class HistoriqueCommandeScreen(Screen):
         btn_ok.bind(
             on_release=lambda inst: self.valider_paiement(
                 popup, commande_id, client, reste_actuel, montant_input.text,
-                self.mode_paiement_spinner.text, self.numero_cheque_input.text
+                self.mode_paiement_spinner.text, self.numero_cheque_input.text,
+                self.depot_sortie_input.text
             )
         )
         popup.open()
 
-    def valider_paiement(self, popup, commande_id, client_nom, reste_actuel, montant_txt, mode_paiement, numero_cheque):
-        """Valide le paiement et génère automatiquement le PDF"""
+    def valider_paiement(self, popup, commande_id, client_nom, reste_actuel, montant_txt, mode_paiement, numero_cheque, depot_sortie):
+        """Valide le paiement et génère automatiquement l'image"""
         try:
             montant_txt = re.sub(r'[^0-9.]', '', montant_txt)
             if not montant_txt:
@@ -929,19 +1078,19 @@ class HistoriqueCommandeScreen(Screen):
                 content.add_widget(btn_box)
 
                 confirm_popup = Popup(title="Confirmation", content=content, size_hint=(0.85, 0.4))
-                btn_oui.bind(on_release=lambda x: self._executer_paiement(confirm_popup, popup, commande_id, client_nom, reste_actuel, montant, mode_paiement, numero_cheque))
+                btn_oui.bind(on_release=lambda x: self._executer_paiement(confirm_popup, popup, commande_id, client_nom, reste_actuel, montant, mode_paiement, numero_cheque, depot_sortie))
                 btn_non.bind(on_release=confirm_popup.dismiss)
                 confirm_popup.open()
             else:
-                self._executer_paiement(None, popup, commande_id, client_nom, reste_actuel, montant, mode_paiement, numero_cheque)
+                self._executer_paiement(None, popup, commande_id, client_nom, reste_actuel, montant, mode_paiement, numero_cheque, depot_sortie)
 
         except ValueError as e:
             self.show_message("Erreur", f"Montant invalide : {str(e)}")
         except Exception as e:
             self.show_message("Erreur", f"Erreur : {str(e)}")
 
-    def _executer_paiement(self, confirm_popup, paiement_popup, commande_id, client_nom, reste_actuel, montant, mode_paiement, numero_cheque):
-        """Exécute le paiement après confirmation et génère le PDF"""
+    def _executer_paiement(self, confirm_popup, paiement_popup, commande_id, client_nom, reste_actuel, montant, mode_paiement, numero_cheque, depot_sortie):
+        """Exécute le paiement après confirmation et génère l'image"""
         try:
             if confirm_popup:
                 confirm_popup.dismiss()
@@ -973,27 +1122,35 @@ class HistoriqueCommandeScreen(Screen):
             if mode_paiement == "Chèque" and numero_cheque:
                 message += f"\nN° Chèque : {numero_cheque}"
 
-            # Génération automatique du PDF après paiement
+            # Génération automatique de l'image après paiement
             try:
                 client_info = {'adresse': '', 'nif': '', 'stat': '', 'contact': ''}
                 clients_data = get_all_clients()
                 for c in clients_data:
-                    if len(c) >= 5 and str(c[0]) == client_nom:
-                        client_info = {
-                            'adresse': str(c[1]) if c[1] else "",
-                            'nif': str(c[2]) if c[2] else "",
-                            'stat': str(c[3]) if c[3] else "",
-                            'contact': str(c[4]) if c[4] else ""
-                        }
-                        break
-
-                from pdf_generator import generer_pdf_facture
-                import datetime
+                    if len(c) >= 5:
+                        if isinstance(c[0], int) and c[0] is not None:
+                            if str(c[1]) == client_nom:
+                                client_info = {
+                                    'adresse': str(c[2]) if len(c) > 2 and c[2] else "",
+                                    'nif': str(c[3]) if len(c) > 3 and c[3] else "",
+                                    'stat': str(c[4]) if len(c) > 4 and c[4] else "",
+                                    'contact': str(c[5]) if len(c) > 5 and c[5] else ""
+                                }
+                                break
+                        else:
+                            if str(c[0]) == client_nom:
+                                client_info = {
+                                    'adresse': str(c[1]) if len(c) > 1 and c[1] else "",
+                                    'nif': str(c[2]) if len(c) > 2 and c[2] else "",
+                                    'stat': str(c[3]) if len(c) > 3 and c[3] else "",
+                                    'contact': str(c[4]) if len(c) > 4 and c[4] else ""
+                                }
+                                break
 
                 commande['avance'] = nouvelle_avance
                 commande['reste'] = nouveau_reste
 
-                filename = generer_pdf_facture(
+                filename = generer_image_facture(
                     commande_id=commande_id,
                     client_nom=client_nom,
                     client_info=client_info,
@@ -1003,16 +1160,17 @@ class HistoriqueCommandeScreen(Screen):
                     reste=nouveau_reste,
                     date_str=datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
                     mode_paiement=mode_paiement,
+                    depot_sortie=depot_sortie,
                     numero_cheque=numero_cheque if mode_paiement == "Chèque" else ""
                 )
 
                 if filename:
-                    message += f"\n\nFacture PDF générée avec succès !"
-                    self.afficher_apercu_pdf(filename, commande_id)
+                    message += f"\n\nFacture générée avec succès !"
+                    self.afficher_apercu_image(filename, commande_id)
                 else:
-                    message += f"\n\nErreur lors de la génération du PDF"
+                    message += f"\n\nErreur lors de la génération de l'image"
             except Exception as e:
-                message += f"\n\nErreur PDF : {str(e)}"
+                message += f"\n\nErreur image : {str(e)}"
 
             self.show_message("Succès", message)
             Clock.schedule_once(lambda dt: self.charger_commandes(None), 0.5)

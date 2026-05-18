@@ -87,7 +87,7 @@ def make_cell(text, w, bg_color, bold=False, font_size=13):
 # ===================================================
 class ClientScreen(Screen):
 
-    HEADERS = ["Nom", "Adresse", "NIF", "STAT", "Contact"]
+    HEADERS = ["Nom", "Adresse", "RESPONSABLE", "STAT", "Contact"]
 
     COL_WIDTHS = [
         dp(130),

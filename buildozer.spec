@@ -16,7 +16,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,ttf,txt,db
 
 # (list) Source files to exclude
-source.exclude_exts = spec
+source.exclude_exts = spec,pyc,pyo,so,dll,exe
 
 # (list) List of directory to exclude
 source.exclude_dirs = tests, bin, venv, .git, __pycache__
@@ -28,7 +28,7 @@ version = 0.1
 # Note: sqlite3 est inclus par défaut, pas besoin de le spécifier
 # android, pyjnius sont des dépendances internes de p4a
 # reportlab nécessite PIL
-requirements = python3,pip,kivy,pillow,requests,fpdf2==2.7.4
+requirements = python3,pip,kivy,pillow,requests
 
 # (str) Presplash of the application
 presplash.filename = %(source.dir)s/images/icon.png

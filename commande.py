@@ -1,3 +1,4 @@
+# commande.py (version modifiée)
 #Importation des bibliothèques utile
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -20,9 +21,10 @@ import subprocess
 import sys
 from kivy.utils import platform
 
-from pdf_generator import generer_pdf_facture
+# Remplacer pdf_generator par image_generator
+from image_generator import generer_image_facture
 
-# Import conditionnel pour Android
+# Import pour le partage sur Android
 ANDROID_AVAILABLE = False
 if platform == 'android':
     try:
@@ -30,6 +32,15 @@ if platform == 'android':
         from android.permissions import request_permissions, Permission
         from jnius import autoclass
         ANDROID_AVAILABLE = True
+        
+        # Classes Android pour partage
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        Intent = autoclass('android.content.Intent')
+        Uri = autoclass('android.net.Uri')
+        File = autoclass('java.io.File')
+        MediaStore = autoclass('android.provider.MediaStore')
+        Context = autoclass('android.content.Context')
+        Build = autoclass('android.os.Build')
     except ImportError:
         pass
 
@@ -167,6 +178,34 @@ class CommandeScreen(Screen):
         )
         client_card.add_widget(self.client_details)
         main_container.add_widget(client_card)
+
+        # ── NOUVEAU: DÉPÔT DE SORTIE ──────────────────────
+        depot_card = BoxLayout(
+            orientation="vertical",
+            size_hint=(1, None), height=80,
+            padding=[10, 8, 10, 8], spacing=6
+        )
+        _bg(depot_card, BG_CARD, radius=12)
+        depot_card.add_widget(Label(
+            text="[b]Dépôt de sortie de stock[/b]", markup=True,
+            font_size=13, color=ACCENT,
+            size_hint=(1, None), height=22
+        ))
+        depot_row = BoxLayout(size_hint=(1, None), height=38, spacing=10)
+        depot_row.add_widget(Label(
+            text="Dépôt :", size_hint=(0.25, 1),
+            color=TEXT_WHITE, font_size=12, halign="right"
+        ))
+        self.depot_sortie = TextInput(
+            text="", multiline=False, font_size=12,
+            foreground_color=TEXT_WHITE,
+            background_color=(0.1, 0.16, 0.30, 1),
+            size_hint=(0.75, 1), padding=[8, 8],
+            hint_text="Magasin principal / Dépôt central"
+        )
+        depot_row.add_widget(self.depot_sortie)
+        depot_card.add_widget(depot_row)
+        main_container.add_widget(depot_card)
 
         # ── SECTION PRODUIT ───────────────────────────────
         produit_card = BoxLayout(
@@ -375,13 +414,13 @@ class CommandeScreen(Screen):
         btn_abandonner.bind(on_release=self.abandonner_commande)
 
         btn_pdf = Button(
-            text="EXPORTER PDF",
+            text="ENREGISTRER",
             font_size=12, bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0), color=TEXT_WHITE
         )
         _bg(btn_pdf, ACCENT_PURPLE, radius=8)
-        btn_pdf.bind(on_release=self.exporter_pdf)
+        btn_pdf.bind(on_release=self.exporter_image)
 
         btn_row.add_widget(btn_abandonner)
         btn_row.add_widget(btn_pdf)
@@ -399,13 +438,17 @@ class CommandeScreen(Screen):
         self.reset_commande(None)
         self.manager.current = "accueil"
 
-    def exporter_pdf(self, instance):
+    def exporter_image(self, instance):
         if not self._valider_commande():
+            return
+        if not self.depot_sortie.text.strip():
+            self.show_message("Information", "Veuillez saisir le dépôt de sortie de stock")
             return
         try:
             montant_verse = self._get_montant_verse()
             reste = max(0, self.total_commande - montant_verse)
             mode_paiement = self.mode_paiement.text
+            depot_sortie = self.depot_sortie.text.strip()
 
             numero_cheque = ""
             if mode_paiement == "Chèque":
@@ -434,7 +477,7 @@ class CommandeScreen(Screen):
                     client_info = c
                     break
 
-            filename = generer_pdf_facture(
+            filename = generer_image_facture(
                 commande_id=commande_id,
                 client_nom=self.client_spinner.text,
                 client_info=client_info,
@@ -443,31 +486,29 @@ class CommandeScreen(Screen):
                 avance=montant_verse,
                 reste=reste,
                 mode_paiement=mode_paiement,
+                depot_sortie=depot_sortie,
                 numero_cheque=numero_cheque,
                 date_str=datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
             )
 
             if filename:
-                self.afficher_apercu_pdf(filename, commande_id)
+                self.afficher_apercu_image(filename, commande_id)
             else:
-                self._generer_txt(commande_id, montant_verse, reste, mode_paiement, numero_cheque)
-                self.show_message(
-                    "Succès",
-                    f"Commande N° {commande_id} enregistrée.\n"
-                    f"Mode de paiement: {mode_paiement}\n"
-                )
+                self.show_message("Erreur", "Erreur lors de la génération de l'image")
 
             self.reset_commande(None)
 
         except Exception as e:
             self.show_message("Erreur", str(e))
 
-    def afficher_apercu_pdf(self, chemin_pdf, commande_id):
+    def afficher_apercu_image(self, chemin_image, commande_id):
+        from kivy.uix.image import Image as KivyImage
+        
         content = BoxLayout(orientation='vertical', spacing=12, padding=15)
         _bg(content, BG_DARK)
 
         content.add_widget(Label(
-            text=f"Facture N° {commande_id}[/b]\n\nPDF généré avec succès !",
+            text=f"Facture N° {commande_id}[/b]\n\nImage générée avec succès !",
             markup=True,
             font_size=13,
             color=TEXT_WHITE,
@@ -476,9 +517,22 @@ class CommandeScreen(Screen):
             halign="center"
         ))
 
-        info_box = BoxLayout(orientation='vertical', size_hint=(1, None), height=50, spacing=5)
+        # Aperçu mini de l'image
+        try:
+            preview = KivyImage(
+                source=chemin_image,
+                size_hint=(1, None),
+                height=150,
+                allow_stretch=True,
+                keep_ratio=True
+            )
+            content.add_widget(preview)
+        except:
+            pass
+
+        info_box = BoxLayout(orientation='vertical', size_hint=(1, None), height=40, spacing=5)
         info_box.add_widget(Label(
-            text=f"{os.path.basename(chemin_pdf)}",
+            text=f"{os.path.basename(chemin_image)}",
             font_size=10,
             color=ACCENT,
             halign="center"
@@ -486,21 +540,32 @@ class CommandeScreen(Screen):
         content.add_widget(info_box)
 
         btn_box = BoxLayout(orientation='vertical', spacing=8, size_hint=(1, None))
-        btn_box.height = 130
+        btn_box.height = 170
 
-        btn_voir = Button(
-            text="VISUALISER",
+        btn_partager = Button(
+            text="PARTAGER",
             size_hint=(1, None), height=38,
             font_size=12, bold=True,
             background_normal="",
             background_color=(0, 0, 0, 0),
             color=TEXT_WHITE
         )
-        _bg(btn_voir, ACCENT_BLUE, radius=6)
-        btn_voir.bind(on_release=lambda x: self.visualiser_pdf(chemin_pdf))
+        _bg(btn_partager, ACCENT_BLUE, radius=6)
+        btn_partager.bind(on_release=lambda x: self.partager_image(chemin_image))
+
+        btn_enregistrer = Button(
+            text="ENREGISTRER SUR LE TÉLÉPHONE",
+            size_hint=(1, None), height=38,
+            font_size=12, bold=True,
+            background_normal="",
+            background_color=(0, 0, 0, 0),
+            color=TEXT_WHITE
+        )
+        _bg(btn_enregistrer, ACCENT_GREEN, radius=6)
+        btn_enregistrer.bind(on_release=lambda x: self.enregistrer_sur_telephone(chemin_image))
 
         btn_imprimer = Button(
-            text="IMPRIMER",
+            text="IMPRIMER (NB80)",
             size_hint=(1, None), height=38,
             font_size=12, bold=True,
             background_normal="",
@@ -508,7 +573,7 @@ class CommandeScreen(Screen):
             color=TEXT_WHITE
         )
         _bg(btn_imprimer, ACCENT_PURPLE, radius=6)
-        btn_imprimer.bind(on_release=lambda x: self.imprimer_pdf(chemin_pdf))
+        btn_imprimer.bind(on_release=lambda x: self.imprimer_image(chemin_image))
 
         btn_fermer = Button(
             text="FERMER",
@@ -520,7 +585,8 @@ class CommandeScreen(Screen):
         )
         _bg(btn_fermer, ACCENT_RED, radius=6)
 
-        btn_box.add_widget(btn_voir)
+        btn_box.add_widget(btn_partager)
+        btn_box.add_widget(btn_enregistrer)
         btn_box.add_widget(btn_imprimer)
         btn_box.add_widget(btn_fermer)
         content.add_widget(btn_box)
@@ -528,34 +594,78 @@ class CommandeScreen(Screen):
         popup = Popup(
             title="Facture prête",
             content=content,
-            size_hint=(0.9, 0.55),
+            size_hint=(0.9, 0.65),
             background_color=BG_CARD
         )
         btn_fermer.bind(on_release=popup.dismiss)
         popup.open()
 
-    def visualiser_pdf(self, chemin_pdf):
+    def partager_image(self, chemin_image):
+        """Partage l'image via les applications disponibles"""
         try:
-            if sys.platform == 'win32':
-                os.startfile(chemin_pdf)
-            elif sys.platform == 'darwin':
-                subprocess.run(['open', chemin_pdf])
+            if ANDROID_AVAILABLE:
+                # Partage sur Android
+                intent = Intent()
+                intent.setAction(Intent.ACTION_SEND)
+                intent.setType("image/jpeg")
+                
+                # Convertir le chemin en Uri pour Android
+                file = File(chemin_image)
+                uri = Uri.fromFile(file)
+                intent.putExtra(Intent.EXTRA_STREAM, uri)
+                
+                # Créer un chooser
+                chooser = Intent.createChooser(intent, "Partager la facture")
+                PythonActivity.mActivity.startActivity(chooser)
+                self.show_message("Succès", "Partage lancé")
             else:
-                subprocess.run(['xdg-open', chemin_pdf])
+                # Sur desktop, copier dans le presse-papier et ouvrir le dossier
+                import subprocess
+                if sys.platform == 'win32':
+                    subprocess.run(['explorer', '/select,', chemin_image])
+                elif sys.platform == 'darwin':
+                    subprocess.run(['open', '-R', chemin_image])
+                else:
+                    subprocess.run(['xdg-open', os.path.dirname(chemin_image)])
+                self.show_message("Info", f"Image disponible: {chemin_image}")
         except Exception as e:
-            self.show_message("Erreur", f"Impossible d'ouvrir le PDF: {e}")
+            self.show_message("Erreur", f"Erreur de partage: {e}")
 
-    def imprimer_pdf(self, chemin_pdf):
+    def enregistrer_sur_telephone(self, chemin_image):
+        """Enregistre l'image dans la galerie du téléphone"""
         try:
-            if sys.platform == 'win32':
-                subprocess.run(['print', chemin_pdf], shell=True)
-                self.show_message("Impression", "Impression envoyée")
-            else:
-                self.show_message(
-                    "Impression",
-                    f"Le fichier PDF est disponible ici:\n{chemin_pdf}\n\n"
-                    "Ouvrez-le avec une application PDF pour imprimer."
+            if ANDROID_AVAILABLE:
+                # Pour Android, enregistrer dans les médias
+                contentValues = MediaStore.Images.Media.getContentValues(
+                    PythonActivity.mActivity, 
+                    File(chemin_image), 
+                    None
                 )
+                uri = PythonActivity.mActivity.getContentResolver().insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
+                    contentValues
+                )
+                self.show_message("Succès", "Facture enregistrée dans la galerie")
+            else:
+                self.show_message("Info", f"Image enregistrée: {chemin_image}")
+        except Exception as e:
+            self.show_message("Erreur", f"Erreur d'enregistrement: {e}")
+
+    def imprimer_image(self, chemin_image):
+        """Prépare l'impression au format NB80"""
+        try:
+            # Ouvrir l'image pour impression
+            if sys.platform == 'win32':
+                os.startfile(chemin_image, "print")
+            elif sys.platform == 'darwin':
+                subprocess.run(['open', chemin_image])
+            else:
+                subprocess.run(['xdg-open', chemin_image])
+            self.show_message(
+                "Impression",
+                f"Ouvrez l'image et utilisez l'impression.\n"
+                "Pour l'impression NB80, réglez le format papier sur 80mm."
+            )
         except Exception as e:
             self.show_message("Erreur", f"Erreur d'impression: {e}")
 
@@ -597,17 +707,9 @@ class CommandeScreen(Screen):
             self.clients_disponibles = []
             lst = []
             
-            print("=== DEBUG CLIENTS ===")  # Debug
-            print(f"Nombre de clients récupérés: {len(clients_data)}")
-            
             for c in clients_data:
-                print(f"Client brut: {c}")  # Debug - voir la structure
-                
                 if len(c) >= 5:
-                    # Si la première colonne est un ID numérique, prenez l'index 1 pour le nom
-                    # Sinon, prenez l'index 0
                     if isinstance(c[0], int) and c[0] is not None:
-                        # Structure avec ID
                         nom_client = str(c[1]) if c[1] else "Sans nom"
                         client_dict = {
                             'nom': nom_client,
@@ -617,7 +719,6 @@ class CommandeScreen(Screen):
                             'contact': str(c[5]) if len(c) > 5 and c[5] else ""
                         }
                     else:
-                        # Structure sans ID
                         nom_client = str(c[0]) if c[0] else "Sans nom"
                         client_dict = {
                             'nom': nom_client,
@@ -629,16 +730,12 @@ class CommandeScreen(Screen):
                     
                     self.clients_disponibles.append(client_dict)
                     lst.append(nom_client)
-                    print(f"Client ajouté: {nom_client}")  # Debug
             
             if self.client_spinner:
                 self.client_spinner.values = lst
-                print(f"Liste clients spinner: {lst}")  # Debug
                 
         except Exception as e:
             print(f"Erreur chargement clients: {e}")
-            import traceback
-            traceback.print_exc()
 
     def charger_produits(self):
         try:
@@ -646,15 +743,8 @@ class CommandeScreen(Screen):
             self.produits_disponibles = []
             lst = []
             
-            print("=== DEBUG PRODUITS ===")  # Debug
-            print(f"Nombre de produits récupérés: {len(produits_data)}")
-            
             for p in produits_data:
-                print(f"Produit brut: {p}")  # Debug
-                
-                # Adapter selon la structure de votre base de données
                 if len(p) >= 3:
-                    # Si la première colonne est un ID
                     if isinstance(p[0], int) and p[0] is not None:
                         nom_produit = str(p[1]) if p[1] else "Sans nom"
                         prix_vente = str(p[3]) if len(p) > 3 and p[3] else "0"
@@ -667,16 +757,12 @@ class CommandeScreen(Screen):
                         'prix_vente': prix_vente
                     })
                     lst.append(nom_produit)
-                    print(f"Produit ajouté: {nom_produit}, Prix: {prix_vente}")  # Debug
                     
             if self.produit_spinner:
                 self.produit_spinner.values = lst
-                print(f"Liste produits spinner: {lst}")  # Debug
                 
         except Exception as e:
             print(f"Erreur chargement produits: {e}")
-            import traceback
-            traceback.print_exc()
 
     def on_client_select(self, spinner, text):
         if text != "Choisir un client" and self.client_details:
@@ -684,7 +770,7 @@ class CommandeScreen(Screen):
                 if c['nom'] == text:
                     self.client_details.text = (
                         f"[b]Adresse:[/b] {c['adresse']}\n"
-                        f"[b]NIF:[/b] {c['nif']} | "
+                        f"[b]Responsable:[/b] {c['nif']} | "
                         f"[b]STAT:[/b] {c['stat']} | "
                         f"[b]Contact:[/b] {c['contact']}"
                     )
@@ -694,16 +780,13 @@ class CommandeScreen(Screen):
             self.client_details.text = ""
 
     def on_produit_select(self, spinner, text):
-        print(f"Produit sélectionné: {text}")  # Debug
         if text != "Choisir un produit" and text:
             for p in self.produits_disponibles:
                 if p['nom'] == text:
                     prix = str(p['prix_vente'])
                     self.prix_vente_client.text = prix
-                    print(f"Prix trouvé: {prix}")  # Debug
                     break
             else:
-                print(f"Produit '{text}' non trouvé dans la liste")
                 self.prix_vente_client.text = ""
 
     def on_quantite_change(self, instance, value):
@@ -773,22 +856,6 @@ class CommandeScreen(Screen):
         except ValueError:
             self.reste_payer.text = "0"
 
-    def _generer_txt(self, commande_id, montant_verse, reste, mode_paiement, numero_cheque=""):
-        if not os.path.exists("factures"):
-            os.makedirs("factures")
-        fn = f"factures/facture_{commande_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        with open(fn, "w", encoding="utf-8") as f:
-            f.write(f"FACTURE N° {commande_id}\n")
-            f.write(f"Client: {self.client_spinner.text}\n\n")
-            for p in self.produits_commandes:
-                f.write(f"{p['nom']} x{p['quantite']} = {p['total']:,.0f} Ar\n")
-            f.write(f"\nTotal: {self.total_commande:,.0f} Ar\n")
-            f.write(f"Montant versé: {montant_verse:,.0f} Ar\n")
-            f.write(f"Reste à payer: {reste:,.0f} Ar\n")
-            f.write(f"Mode de paiement: {mode_paiement}\n")
-            if numero_cheque:
-                f.write(f"N° Chèque: {numero_cheque}\n")
-
     def reset_commande(self, instance):
         self.produits_commandes = []
         self.total_commande = 0
@@ -809,6 +876,7 @@ class CommandeScreen(Screen):
         self.reste_payer.text = '0'
         self.mode_paiement.text = 'Espèce'
         self.numero_cheque.text = ''
+        self.depot_sortie.text = ''
 
         self.numero_cheque.opacity = 0
         self.numero_cheque.disabled = True

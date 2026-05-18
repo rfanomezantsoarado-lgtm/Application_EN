@@ -864,24 +864,55 @@ class HistoriqueCommandeScreen(Screen):
         """Enregistre l'image dans la galerie du téléphone"""
         try:
             if ANDROID_AVAILABLE:
-                # Pour Android, enregistrer dans les médias
+                import shutil
+                
+                # Demander les permissions
                 from android.permissions import request_permissions, Permission
                 request_permissions([Permission.WRITE_EXTERNAL_STORAGE])
                 
-                contentValues = MediaStore.Images.Media.getContentValues(
-                    PythonActivity.mActivity, 
-                    File(chemin_image), 
-                    None
-                )
-                uri = PythonActivity.mActivity.getContentResolver().insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
-                    contentValues
-                )
-                self.show_message("Succès", "Facture enregistrée dans la galerie")
+                # Créer le dossier Factures dans Pictures
+                possible_paths = [
+                    os.path.join('/storage/emulated/0', 'Pictures', 'Factures'),
+                    os.path.join('/sdcard', 'Pictures', 'Factures'),
+                    PythonActivity.mActivity.getExternalFilesDir(None).getAbsolutePath() + '/Factures'
+                ]
+                
+                pictures_dir = None
+                for path in possible_paths:
+                    try:
+                        if path and os.path.exists(os.path.dirname(path)):
+                            pictures_dir = path
+                            break
+                    except:
+                        continue
+                
+                if not pictures_dir:
+                    pictures_dir = os.path.join(os.path.dirname(chemin_image), 'Factures_saved')
+                
+                # Créer le dossier
+                if not os.path.exists(pictures_dir):
+                    os.makedirs(pictures_dir)
+                
+                # Copier l'image
+                nom_fichier = os.path.basename(chemin_image)
+                destination = os.path.join(pictures_dir, nom_fichier)
+                shutil.copy2(chemin_image, destination)
+                
+                # Notifier le système pour que l'image apparaisse dans la galerie
+                try:
+                    intent = Intent()
+                    intent.setAction(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                    intent.setData(Uri.fromFile(File(destination)))
+                    PythonActivity.mActivity.sendBroadcast(intent)
+                except:
+                    pass
+                
+                self.show_message("Succès", f"Facture enregistrée dans:\n{pictures_dir}")
             else:
                 self.show_message("Info", f"Image enregistrée: {chemin_image}")
         except Exception as e:
-            self.show_message("Erreur", f"Erreur d'enregistrement: {e}")
+            # En cas d'erreur, au moins afficher le chemin
+            self.show_message("Info", f"Image disponible à:\n{chemin_image}")
 
     def imprimer_image(self, chemin_image):
         """Prépare l'impression au format NB80"""

@@ -1,4 +1,4 @@
-# image_generator.py
+# image_generator.py (générateur d'image)
 from PIL import Image, ImageDraw, ImageFont
 import os
 import datetime

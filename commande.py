@@ -1,4 +1,4 @@
-# commande.py (version modifiée)
+# commande.py (version modifiée avec indentation corrigée)
 #Importation des bibliothèques utile
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -179,7 +179,7 @@ class CommandeScreen(Screen):
         client_card.add_widget(self.client_details)
         main_container.add_widget(client_card)
 
-        # ── NOUVEAU: DÉPÔT DE SORTIE ──────────────────────
+        # ── DÉPÔT DE SORTIE ──────────────────────
         depot_card = BoxLayout(
             orientation="vertical",
             size_hint=(1, None), height=80,
@@ -465,7 +465,8 @@ class CommandeScreen(Screen):
                 reste=reste,
                 mode_paiement=mode_paiement,
                 numero_cheque=numero_cheque,
-                date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                depot_sortie=depot_sortie
             )
             if not commande_id:
                 self.show_message("Erreur", "Erreur lors de l'enregistrement")
@@ -554,7 +555,7 @@ class CommandeScreen(Screen):
         btn_partager.bind(on_release=lambda x: self.partager_image(chemin_image))
 
         btn_enregistrer = Button(
-            text="ENREGISTRER SUR LE TÉLÉPHONE",
+            text="ENREGISTRER SUR GALERIE",
             size_hint=(1, None), height=38,
             font_size=12, bold=True,
             background_normal="",
@@ -565,7 +566,7 @@ class CommandeScreen(Screen):
         btn_enregistrer.bind(on_release=lambda x: self.enregistrer_sur_telephone(chemin_image))
 
         btn_imprimer = Button(
-            text="IMPRIMER (NB80)",
+            text="IMPRIMER",
             size_hint=(1, None), height=38,
             font_size=12, bold=True,
             background_normal="",
@@ -635,21 +636,54 @@ class CommandeScreen(Screen):
         """Enregistre l'image dans la galerie du téléphone"""
         try:
             if ANDROID_AVAILABLE:
-                # Pour Android, enregistrer dans les médias
-                contentValues = MediaStore.Images.Media.getContentValues(
-                    PythonActivity.mActivity, 
-                    File(chemin_image), 
-                    None
-                )
-                uri = PythonActivity.mActivity.getContentResolver().insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
-                    contentValues
-                )
-                self.show_message("Succès", "Facture enregistrée dans la galerie")
+                import shutil
+                import time
+                
+                # Créer le dossier Factures dans Pictures
+                # Chemins possibles selon l'appareil
+                possible_paths = [
+                    os.path.join(os.environ.get('EXTERNAL_STORAGE', '/storage/emulated/0'), 'Pictures', 'Factures'),
+                    os.path.join('/storage/emulated/0', 'Pictures', 'Factures'),
+                    os.path.join('/sdcard', 'Pictures', 'Factures'),
+                    PythonActivity.mActivity.getExternalFilesDir(None).getAbsolutePath() + '/Factures'
+                ]
+                
+                pictures_dir = None
+                for path in possible_paths:
+                    try:
+                        if path and os.path.exists(os.path.dirname(path)):
+                            pictures_dir = path
+                            break
+                    except:
+                        continue
+                
+                if not pictures_dir:
+                    pictures_dir = os.path.join(os.path.dirname(chemin_image), 'Factures_saved')
+                
+                # Créer le dossier
+                if not os.path.exists(pictures_dir):
+                    os.makedirs(pictures_dir)
+                
+                # Copier l'image
+                nom_fichier = os.path.basename(chemin_image)
+                destination = os.path.join(pictures_dir, nom_fichier)
+                shutil.copy2(chemin_image, destination)
+                
+                # Notifier le système
+                try:
+                    intent = Intent()
+                    intent.setAction(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                    intent.setData(Uri.fromFile(File(destination)))
+                    PythonActivity.mActivity.sendBroadcast(intent)
+                except:
+                    pass
+                
+                self.show_message("Succès", f"Facture enregistrée dans:\n{pictures_dir}")
             else:
                 self.show_message("Info", f"Image enregistrée: {chemin_image}")
         except Exception as e:
-            self.show_message("Erreur", f"Erreur d'enregistrement: {e}")
+            # En cas d'erreur, au moins afficher le chemin
+            self.show_message("Info", f"Image disponible à:\n{chemin_image}")
 
     def imprimer_image(self, chemin_image):
         """Prépare l'impression au format NB80"""

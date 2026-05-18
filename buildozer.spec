@@ -16,7 +16,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,ttf,txt,db
 
 # (list) Source files to exclude
-source.exclude_exts = spec,pyc,pyo,so,dll,exe
+source.exclude_exts = spec
 
 # (list) List of directory to exclude
 source.exclude_dirs = tests, bin, venv, .git, __pycache__

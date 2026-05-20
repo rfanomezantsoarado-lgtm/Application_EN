@@ -23,38 +23,8 @@ def generer_en_tete(draw, img, width, padding, y):
     except:
         logo_width = 0
     
-    # Position du texte à côté du logo
-    text_x = padding + logo_width
-    
-    # Texte "MATÉRIAUX DE CONSTRUCTION" directement (sans ENTREPRISE)
-    try:
-        font_materiaux = ImageFont.truetype(FONT_BOLD, 14) if FONT_BOLD else ImageFont.load_default()
-    except:
-        font_materiaux = ImageFont.load_default()
-    
-    draw.text((text_x, y + 5), "MATÉRIAUX DE CONSTRUCTION", 
-              font=font_materiaux, fill='#1a237e')
-    
-    # Sous-titre "Vente en gros et détail" en dessous
-    try:
-        font_soustitre = ImageFont.truetype(FONT_REGULAR, 10) if FONT_REGULAR else ImageFont.load_default()
-    except:
-        font_soustitre = ImageFont.load_default()
-    
-    draw.text((text_x, y + 25), "Vente en gros et détail", font=font_soustitre, fill='#666666')
-    
-    # Contact - centré par rapport au logo
+    # Le logo est centré, on va placer les textes en dessous
     logo_bottom = y + 60  # Le logo fait 60px de hauteur
-    
-    try:
-        font_contact = ImageFont.truetype(FONT_REGULAR, 9) if FONT_REGULAR else ImageFont.load_default()
-    except:
-        font_contact = ImageFont.load_default()
-    
-    # Position du contact centrée horizontalement par rapport au logo
-    contact_text = "Contact : 034 41 463 65"
-    bbox_contact = draw.textbbox((0, 0), contact_text, font=font_contact)
-    contact_width = bbox_contact[2] - bbox_contact[0]
     
     # Calculer le centre du logo
     if logo_width > 0:
@@ -63,9 +33,31 @@ def generer_en_tete(draw, img, width, padding, y):
     else:
         logo_center_x = padding + 30  # Valeur par défaut si pas de logo
     
+    # Sous-titre "Vente en gros et détail" centré sous le logo
+    try:
+        font_soustitre = ImageFont.truetype(FONT_REGULAR, 10) if FONT_REGULAR else ImageFont.load_default()
+    except:
+        font_soustitre = ImageFont.load_default()
+    
+    sous_titre_text = "Vente en gros et détail"
+    bbox_soustitre = draw.textbbox((0, 0), sous_titre_text, font=font_soustitre)
+    soustitre_width = bbox_soustitre[2] - bbox_soustitre[0]
+    soustitre_x = logo_center_x - (soustitre_width // 2)
+    
+    draw.text((soustitre_x, logo_bottom + 5), sous_titre_text, font=font_soustitre, fill='#666666')
+    
+    # Contact - centré sous le sous-titre
+    try:
+        font_contact = ImageFont.truetype(FONT_REGULAR, 9) if FONT_REGULAR else ImageFont.load_default()
+    except:
+        font_contact = ImageFont.load_default()
+    
+    contact_text = "Contact : 034 41 463 65"
+    bbox_contact = draw.textbbox((0, 0), contact_text, font=font_contact)
+    contact_width = bbox_contact[2] - bbox_contact[0]
     contact_x = logo_center_x - (contact_width // 2)
     
-    draw.text((contact_x, logo_bottom - 15), contact_text, font=font_contact, fill='#888888')
+    draw.text((contact_x, logo_bottom + 20), contact_text, font=font_contact, fill='#888888')
     
     return logo_width
 

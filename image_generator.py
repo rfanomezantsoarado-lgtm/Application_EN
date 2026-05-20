@@ -1,10 +1,29 @@
-# facture_complete.py - Code complet pour générer la facture proforma
+# image_generator.py - Code complet corrigé
 from PIL import Image, ImageDraw, ImageFont
 import os
+import datetime
+from kivy.utils import platform
 
 # Configuration des polices (ajustez les chemins selon votre système)
-FONT_REGULAR = "arial.ttf"  # Chemin vers une police régulière
-FONT_BOLD = "arialbd.ttf"   # Chemin vers une police gras
+if platform == 'android':
+    # Sur Android, utiliser les polices système
+    FONT_REGULAR = "/system/fonts/Roboto-Regular.ttf"
+    FONT_BOLD = "/system/fonts/Roboto-Bold.ttf"
+else:
+    # Sur PC, essayer plusieurs chemins
+    possible_fonts = [
+        "arial.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/System/Library/Fonts/Helvetica.ttc"
+    ]
+    FONT_REGULAR = None
+    FONT_BOLD = None
+    for font_path in possible_fonts:
+        if os.path.exists(font_path):
+            FONT_REGULAR = font_path
+            FONT_BOLD = font_path.replace("Regular", "Bold").replace("LiberationSans-Regular", "LiberationSans-Bold").replace("Helvetica.ttc", "Helvetica-Bold.ttc")
+            break
 
 def generer_en_tete(draw, img, width, padding, y):
     """Génère l'en-tête avec logo et texte comme sur l'image"""
@@ -23,8 +42,30 @@ def generer_en_tete(draw, img, width, padding, y):
     except:
         logo_width = 0
     
-    # Le logo est centré, on va placer les textes en dessous
+    # Position du texte à côté du logo
+    text_x = padding + logo_width
+    
+    
+    # Sous-titre "Vente en gros et détail" en dessous
+    try:
+        font_soustitre = ImageFont.truetype(FONT_REGULAR, 10) if FONT_REGULAR else ImageFont.load_default()
+    except:
+        font_soustitre = ImageFont.load_default()
+    
+    draw.text((text_x, y + 25), "Vente en gros et détail", font=font_soustitre, fill='#666666')
+    
+    # Contact - centré par rapport au logo
     logo_bottom = y + 60  # Le logo fait 60px de hauteur
+    
+    try:
+        font_contact = ImageFont.truetype(FONT_REGULAR, 9) if FONT_REGULAR else ImageFont.load_default()
+    except:
+        font_contact = ImageFont.load_default()
+    
+    # Position du contact centrée horizontalement par rapport au logo
+    contact_text = "Contact : 034 41 463 65"
+    bbox_contact = draw.textbbox((0, 0), contact_text, font=font_contact)
+    contact_width = bbox_contact[2] - bbox_contact[0]
     
     # Calculer le centre du logo
     if logo_width > 0:
@@ -33,31 +74,9 @@ def generer_en_tete(draw, img, width, padding, y):
     else:
         logo_center_x = padding + 30  # Valeur par défaut si pas de logo
     
-    # Sous-titre "Vente en gros et détail" centré sous le logo
-    try:
-        font_soustitre = ImageFont.truetype(FONT_REGULAR, 10) if FONT_REGULAR else ImageFont.load_default()
-    except:
-        font_soustitre = ImageFont.load_default()
-    
-    sous_titre_text = "Vente en gros et détail"
-    bbox_soustitre = draw.textbbox((0, 0), sous_titre_text, font=font_soustitre)
-    soustitre_width = bbox_soustitre[2] - bbox_soustitre[0]
-    soustitre_x = logo_center_x - (soustitre_width // 2)
-    
-    draw.text((soustitre_x, logo_bottom + 5), sous_titre_text, font=font_soustitre, fill='#666666')
-    
-    # Contact - centré sous le sous-titre
-    try:
-        font_contact = ImageFont.truetype(FONT_REGULAR, 9) if FONT_REGULAR else ImageFont.load_default()
-    except:
-        font_contact = ImageFont.load_default()
-    
-    contact_text = "Contact : 034 41 463 65"
-    bbox_contact = draw.textbbox((0, 0), contact_text, font=font_contact)
-    contact_width = bbox_contact[2] - bbox_contact[0]
     contact_x = logo_center_x - (contact_width // 2)
     
-    draw.text((contact_x, logo_bottom + 20), contact_text, font=font_contact, fill='#888888')
+    draw.text((contact_x, logo_bottom - 15), contact_text, font=font_contact, fill='#888888')
     
     return logo_width
 
@@ -396,3 +415,40 @@ def generer_facture_proforma(filename, client_nom, client_info, produits,
     print(f"Facture générée avec succès : {filename}")
     
     return img
+
+# ===================================================
+# FONCTION WRAPPER POUR COMMANDE.PY
+# ===================================================
+
+def generer_image_facture(commande_id, client_nom, client_info, produits, 
+                          total, avance, reste, date_str, mode_paiement, 
+                          depot_sortie, numero_cheque=""):
+    """Fonction wrapper pour générer une facture avec l'ID de commande"""
+    from datetime import datetime
+    
+    if not date_str:
+        date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+    
+    # Créer le dossier factures s'il n'existe pas
+    if not os.path.exists("factures"):
+        os.makedirs("factures")
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"factures/facture_{commande_id}_{timestamp}.jpg"
+    
+    # Appeler la fonction existante
+    generer_facture_proforma(
+        filename=filename,
+        client_nom=client_nom,
+        client_info=client_info,
+        produits=produits,
+        date_str=date_str,
+        mode_paiement=mode_paiement,
+        depot_sortie=depot_sortie,
+        total=total,
+        avance=avance,
+        reste=reste,
+        numero_cheque=numero_cheque
+    )
+    
+    return filename

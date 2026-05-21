@@ -478,7 +478,7 @@ class CommandeScreen(Screen):
                     client_info = c
                     break
 
-            filename = generer_image_facture(
+            filename = generer_facture_proforma(
                 commande_id=commande_id,
                 client_nom=self.client_spinner.text,
                 client_info=client_info,

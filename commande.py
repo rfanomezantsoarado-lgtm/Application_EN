@@ -644,25 +644,25 @@ class CommandeScreen(Screen):
             self.show_message("Info", f"Image disponible à:\n{chemin_image}")
 
     def imprimer_image(self, chemin_image):
-    try:
-        from android import activity
-        from jnius import autoclass
-        
-        PrintHelper = autoclass('android.print.PrintHelper')
-        File = autoclass('java.io.File')
-        Uri = autoclass('android.net.Uri')
-        
-        file = File(chemin_image)
-        uri = Uri.fromFile(file)
-        
-        print_helper = PrintHelper(activity.getApplicationContext())
-        print_helper.setScaleMode(PrintHelper.SCALE_MODE_FIT)
-        print_helper.printBitmap("NB80_Print", uri)
-        
-        self.show_message("Impression", "Impression en cours sur NB80...")
-        
-    except Exception as e:
-        self.show_message("Erreur", f"Erreur: {e}")
+        try:
+            from android import activity
+            from jnius import autoclass
+            
+            PrintHelper = autoclass('android.print.PrintHelper')
+            File = autoclass('java.io.File')
+            Uri = autoclass('android.net.Uri')
+            
+            file = File(chemin_image)
+            uri = Uri.fromFile(file)
+            
+            print_helper = PrintHelper(activity.getApplicationContext())
+            print_helper.setScaleMode(PrintHelper.SCALE_MODE_FIT)
+            print_helper.printBitmap("NB80_Print", uri)
+            
+            self.show_message("Impression", "Impression en cours sur NB80...")
+            
+        except Exception as e:
+            self.show_message("Erreur", f"Erreur: {e}")
 
     # ═══════════════════════════════════════════════════════════
     # MÉTHODES UTILITAIRES

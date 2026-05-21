@@ -384,9 +384,17 @@ def generer_bas_facture_avec_pointilles(draw, width, padding, y_start, total, av
     
     return y_fin + mm_to_px(10)
 
-def generer_facture_proforma(filename, client_nom, client_info, produits, 
+def generer_facture_proforma(client_nom, client_info, produits, 
                             date_str, mode_paiement, depot_sortie, 
-                            total, avance, reste, num_facture, annee, numero_cheque=""):
+                            total, avance, reste, commande_id, 
+                            numero_cheque=""):
+    """Génère la facture proforma complète (300 DPI)"""
+    from datetime import datetime
+    
+    # Générer automatiquement le nom du fichier
+    annee = datetime.now().strftime("%Y")
+    filename = f"facture_{commande_id}_{annee}.jpg"
+    num_facture = f"{commande_id}/{annee}"
     """Génère la facture proforma complète (300 DPI)"""
     
     # Dimensions de l'image (80mm de largeur à 300 DPI)

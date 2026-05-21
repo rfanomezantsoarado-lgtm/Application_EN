@@ -21,7 +21,7 @@ import sys
 from kivy.utils import platform
 
 # Remplacer pdf_generator par image_generator
-from image_generator import generer_image_facture
+from image_generator import generer_facture_proforma
 
 # Import pour le partage sur Android
 ANDROID_AVAILABLE = False
@@ -680,7 +680,7 @@ class HistoriqueCommandeScreen(Screen):
                 self.show_message("Erreur", "Commande introuvable")
                 return
 
-            client_info = {'adresse': '', 'nif': '', 'stat': '', 'contact': ''}
+            client_info = {'adresse': '', 'stat': '', 'contact': '', 'responsable': ''}
             clients_data = get_all_clients()
             for c in clients_data:
                 if len(c) >= 5:
@@ -688,18 +688,18 @@ class HistoriqueCommandeScreen(Screen):
                         if str(c[1]) == commande['client_nom']:
                             client_info = {
                                 'adresse': str(c[2]) if len(c) > 2 and c[2] else "",
-                                'nif': str(c[3]) if len(c) > 3 and c[3] else "",
-                                'stat': str(c[4]) if len(c) > 4 and c[4] else "",
-                                'contact': str(c[5]) if len(c) > 5 and c[5] else ""
+                                'stat': str(c[3]) if len(c) > 3 and c[3] else "",
+                                'contact': str(c[4]) if len(c) > 4 and c[4] else "",
+                                'responsable': str(c[5]) if len(c) > 5 and c[5] else ""
                             }
                             break
                     else:
                         if str(c[0]) == commande['client_nom']:
                             client_info = {
                                 'adresse': str(c[1]) if len(c) > 1 and c[1] else "",
-                                'nif': str(c[2]) if len(c) > 2 and c[2] else "",
-                                'stat': str(c[3]) if len(c) > 3 and c[3] else "",
-                                'contact': str(c[4]) if len(c) > 4 and c[4] else ""
+                                'stat': str(c[2]) if len(c) > 2 and c[2] else "",
+                                'contact': str(c[3]) if len(c) > 3 and c[3] else "",
+                                'responsable': str(c[4]) if len(c) > 4 and c[4] else ""
                             }
                             break
 
@@ -707,7 +707,7 @@ class HistoriqueCommandeScreen(Screen):
             numero_cheque = commande.get("numero_cheque", "") if mode_paiement == "Chèque" else ""
             depot_sortie = commande.get("depot_sortie", "Dépôt principal")
 
-            filename = generer_image_facture(
+            filename = generer_facture_proforma(
                 commande_id=commande_id,
                 client_nom=commande['client_nom'],
                 client_info=client_info,
@@ -1155,7 +1155,7 @@ class HistoriqueCommandeScreen(Screen):
 
             # Génération automatique de l'image après paiement
             try:
-                client_info = {'adresse': '', 'nif': '', 'stat': '', 'contact': ''}
+                client_info = {'adresse': '', 'stat': '', 'contact': '', 'responsable': ''}
                 clients_data = get_all_clients()
                 for c in clients_data:
                     if len(c) >= 5:
@@ -1163,25 +1163,25 @@ class HistoriqueCommandeScreen(Screen):
                             if str(c[1]) == client_nom:
                                 client_info = {
                                     'adresse': str(c[2]) if len(c) > 2 and c[2] else "",
-                                    'nif': str(c[3]) if len(c) > 3 and c[3] else "",
-                                    'stat': str(c[4]) if len(c) > 4 and c[4] else "",
-                                    'contact': str(c[5]) if len(c) > 5 and c[5] else ""
+                                    'stat': str(c[3]) if len(c) > 3 and c[3] else "",
+                                    'contact': str(c[4]) if len(c) > 4 and c[4] else "",
+                                    'responsable': str(c[5]) if len(c) > 5 and c[5] else ""
                                 }
                                 break
                         else:
                             if str(c[0]) == client_nom:
                                 client_info = {
-                                    'adresse': str(c[1]) if len(c) > 1 and c[1] else "",
-                                    'nif': str(c[2]) if len(c) > 2 and c[2] else "",
+                                    'adresse': str(c[2]) if len(c) > 2 and c[2] else "",
                                     'stat': str(c[3]) if len(c) > 3 and c[3] else "",
-                                    'contact': str(c[4]) if len(c) > 4 and c[4] else ""
+                                    'contact': str(c[4]) if len(c) > 4 and c[4] else "",
+                                    'responsable': str(c[5]) if len(c) > 5 and c[5] else ""
                                 }
                                 break
 
                 commande['avance'] = nouvelle_avance
                 commande['reste'] = nouveau_reste
 
-                filename = generer_image_facture(
+                filename = generer_facture_proforma(
                     commande_id=commande_id,
                     client_nom=client_nom,
                     client_info=client_info,

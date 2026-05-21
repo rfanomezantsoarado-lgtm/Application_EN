@@ -22,7 +22,7 @@ import sys
 from kivy.utils import platform
 
 # Remplacer pdf_generator par image_generator
-from image_generator import generer_image_facture
+from image_generator import generer_facture_proforma
 
 # Import pour le partage sur Android
 ANDROID_AVAILABLE = False

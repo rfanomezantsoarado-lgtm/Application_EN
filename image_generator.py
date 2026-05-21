@@ -228,7 +228,7 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     
     # === TITRE "BON DE LIVRAISON N°" centré ===
     titre_y = y
-    num_bon = f"BL-{annee}-{num_facture:02d}"
+    num_bon = f"BL-{annee}-{num_facture}"
     
     # Calculer la largeur du titre pour le centrer
     bbox_titre = draw.textbbox((0, 0), f"BON DE LIVRAISON N° {num_bon}", font=font_header)
@@ -242,7 +242,6 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     header_y = y
     draw.rectangle(
         [(table_x, header_y), (table_x + table_width, header_y + header_height)],
-        fill='#1a237e',
         outline='#1a237e'
     )
     

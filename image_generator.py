@@ -1,6 +1,7 @@
-# facture_complete.py - Code complet pour générer la facture proforma (300 DPI)
+# image_generator.py - Version corrigée
 from PIL import Image, ImageDraw, ImageFont
 import os
+from datetime import datetime
 
 # Configuration des polices (ajustez les chemins selon votre système)
 FONT_REGULAR = "arial.ttf"  # Chemin vers une police régulière
@@ -410,8 +411,7 @@ def generer_facture_proforma(client_nom, client_info, produits,
                             date_str, mode_paiement, depot_sortie, 
                             total, avance, reste, commande_id, 
                             numero_cheque=""):
-    """Génère la facture proforma complète (300 DPI)"""
-    from datetime import datetime
+    """Génère la facture proforma complète (300 DPI) et retourne le chemin du fichier"""
     
     # Générer automatiquement le nom du fichier
     annee = datetime.now().strftime("%Y")
@@ -451,39 +451,5 @@ def generer_facture_proforma(client_nom, client_info, produits,
     img.save(filename, "JPEG", quality=95, dpi=(DPI, DPI))
     print(f"Facture générée avec succès : {filename} (300 DPI)")
     
-    return img
-
-# Exemple d'utilisation
-if __name__ == "__main__":
-    # Données d'exemple
-    client_nom = "SARL EXAMPLE"
-    client_info = {
-        'stat': '2001 1234',
-        'adresse': 'Lot IV 68 Antananarivo',
-        'contact': '034 12 345 67',
-        'responsable': 'M. RABE'
-    }
-    
-    produits = [
-        {'nom': 'Produit A', 'quantite': 2, 'prix_unitaire': 50000, 'total': 100000},
-        {'nom': 'Produit B', 'quantite': 1, 'prix_unitaire': 75000, 'total': 75000},
-        {'nom': 'Produit C', 'quantite': 5, 'prix_unitaire': 12000, 'total': 60000}
-    ]
-    
-    total = 235000
-    avance = 100000
-    reste = 135000
-    
-    # Appel de la fonction
-    generer_facture_proforma(
-        client_nom=client_nom,
-        client_info=client_info,
-        produits=produits,
-        date_str="10/12/2024",
-        mode_paiement="Espèces",
-        depot_sortie="Magasin Principal",
-        total=total,
-        avance=avance,
-        reste=reste,
-        commande_id="CMD001"
-    )
+    # Retourner le chemin du fichier (string) et non l'objet Image
+    return filename

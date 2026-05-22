@@ -27,13 +27,15 @@ def generer_en_tete(draw, img, width, padding, y):
             # Redimensionner le logo (4cm x 4cm = 40mm x 40mm)
             logo_size = mm_to_px(40)  # 40mm = 472 pixels à 300 DPI
             logo.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
+            # Convertir le logo en RGB si nécessaire
+            if logo.mode != 'RGB':
+                logo = logo.convert('RGB')
+            # Coller le logo sur l'image principale
             img.paste(logo, (padding, y))
             logo_width = logo.width + 10
-    except:
+    except Exception as e:
+        print(f"Erreur chargement logo: {e}")
         logo_width = 0
-    
-    # Position du texte à côté du logo
-    text_x = padding + logo_width
     
     # Sous-titre "Vente en gros et détail" en bas du logo
     try:
@@ -42,8 +44,8 @@ def generer_en_tete(draw, img, width, padding, y):
         font_soustitre = ImageFont.load_default()
     
     # Position du sous-titre centré sous le logo
-    if logo_width > 0:
-        logo_actual_width = logo.width if logo else 0
+    if logo and logo_width > 0:
+        logo_actual_width = logo.width
         logo_center_x = padding + (logo_actual_width // 2)
         bbox_soustitre = draw.textbbox((0, 0), "Vente en gros et détail", font=font_soustitre)
         soustitre_width = bbox_soustitre[2] - bbox_soustitre[0]
@@ -64,8 +66,8 @@ def generer_en_tete(draw, img, width, padding, y):
     contact_width = bbox_contact[2] - bbox_contact[0]
     
     # Calculer le centre du logo
-    if logo_width > 0:
-        logo_actual_width = logo.width if logo else 0
+    if logo and logo_width > 0:
+        logo_actual_width = logo.width
         logo_center_x = padding + (logo_actual_width // 2)
     else:
         logo_center_x = padding + mm_to_px(10)
@@ -238,25 +240,36 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     draw.text((titre_x, titre_y), f"BON DE LIVRAISON N° {num_bon}", font=font_header, fill='#000000')
     y += mm_to_px(8)  # Espace après le titre
     
-    # === EN-TÊTE DU TABLEAU avec fond bleu ===
+    # === EN-TÊTE DU TABLEAU (sans couleur de fond, bordure noire) ===
     header_y = y
+    
+    # Dessiner le rectangle de l'en-tête (contour noir)
     draw.rectangle(
         [(table_x, header_y), (table_x + table_width, header_y + header_height)],
-        outline='#1a237e'
+        outline='#000000',  # Bordure noire
+        fill=None,  # Pas de remplissage
+        width=2
     )
     
-    # Texte des colonnes
+    # Dessiner les séparateurs verticaux dans l'en-tête
+    x_pos = table_x
+    for i, (col_name, col_width) in enumerate(col_widths.items()):
+        if i < len(col_widths) - 1:  # Pas de trait après la dernière colonne
+            x_pos += col_width
+            draw.line([(x_pos, header_y), (x_pos, header_y + header_height)], fill='#000000', width=1)
+    
+    # Texte des colonnes (en noir)
     x_offset = table_x
-    draw.text((x_offset + mm_to_px(3), header_y + mm_to_px(3)), "Désignation", font=font_header, fill='white')
+    draw.text((x_offset + mm_to_px(3), header_y + mm_to_px(3)), "Désignation", font=font_header, fill='#000000')
     x_offset += col_widths['designation']
     
-    draw.text((x_offset + mm_to_px(3), header_y + mm_to_px(3)), "Quantité", font=font_header, fill='white')
+    draw.text((x_offset + mm_to_px(3), header_y + mm_to_px(3)), "Quantité", font=font_header, fill='#000000')
     x_offset += col_widths['quantite']
     
-    draw.text((x_offset + mm_to_px(3), header_y + mm_to_px(3)), "Prix Unitaire", font=font_header, fill='white')
+    draw.text((x_offset + mm_to_px(3), header_y + mm_to_px(3)), "Prix Unitaire", font=font_header, fill='#000000')
     x_offset += col_widths['prix_unitaire']
     
-    draw.text((x_offset + mm_to_px(3), header_y + mm_to_px(3)), "Montant (Ar)", font=font_header, fill='white')
+    draw.text((x_offset + mm_to_px(3), header_y + mm_to_px(3)), "Montant (Ar)", font=font_header, fill='#000000')
     
     y += header_height
     
@@ -272,21 +285,27 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
         else:
             row_fill = '#f5f5f5'
         
-        # Dessiner la ligne
+        # Dessiner la ligne avec bordure
         draw.rectangle(
             [(table_x, row_y), (table_x + table_width, row_y + row_height)],
             fill=row_fill,
             outline='#dddddd'
         )
         
+        # Dessiner les séparateurs verticaux
+        x_pos = table_x
+        for j, (col_name, col_width) in enumerate(col_widths.items()):
+            if j < len(col_widths) - 1:  # Pas de trait après la dernière colonne
+                x_pos += col_width
+                draw.line([(x_pos, row_y), (x_pos, row_y + row_height)], fill='#dddddd', width=1)
+        
         # Remplir avec les données si disponibles
         if i < len(produits):
             p = produits[i]
             x_offset = table_x
             
-            # Désignation (supporte UTF-8)
-            max_chars = mm_to_px(100) // font_size * 2
-            designation = p['nom'][:max_chars] + "..." if len(p['nom']) > max_chars else p['nom']
+            # Désignation
+            designation = p['nom']
             draw.text((x_offset + mm_to_px(3), row_y + mm_to_px(2)), designation, font=font_normal, fill='#333333')
             x_offset += col_widths['designation']
             
@@ -306,8 +325,12 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     draw.line(
         [(table_x, bottom_y), (table_x + table_width, bottom_y)],
         fill='#000000',
-        width=3
+        width=2
     )
+    
+    # Ligne de bordure à gauche et à droite du tableau
+    draw.line([(table_x, header_y), (table_x, bottom_y)], fill='#000000', width=2)
+    draw.line([(table_x + table_width, header_y), (table_x + table_width, bottom_y)], fill='#000000', width=2)
     
     return bottom_y + mm_to_px(7)
 
@@ -394,7 +417,6 @@ def generer_facture_proforma(client_nom, client_info, produits,
     annee = datetime.now().strftime("%Y")
     filename = f"facture_{commande_id}_{annee}.jpg"
     num_facture = f"{commande_id}/{annee}"
-    """Génère la facture proforma complète (300 DPI)"""
     
     # Dimensions de l'image (80mm de largeur à 300 DPI)
     width = mm_to_px(80)   # 80mm = 945 pixels à 300 DPI
@@ -419,7 +441,7 @@ def generer_facture_proforma(client_nom, client_info, produits,
     date_y = generer_date(draw, width, padding, client_y, date_str)
     
     # Tableau (commence après la date)
-    tableau_y = generer_tableau_bon_livraison(draw, width, padding, date_y, produits, num_facture, annee)
+    tableau_y = generer_tableau_bon_livraison(draw, width, padding, date_y, produits, commande_id, annee)
     
     # Bas de page
     generer_bas_facture_avec_pointilles(draw, width, padding, tableau_y, total, avance, reste, 
@@ -430,3 +452,38 @@ def generer_facture_proforma(client_nom, client_info, produits,
     print(f"Facture générée avec succès : {filename} (300 DPI)")
     
     return img
+
+# Exemple d'utilisation
+if __name__ == "__main__":
+    # Données d'exemple
+    client_nom = "SARL EXAMPLE"
+    client_info = {
+        'stat': '2001 1234',
+        'adresse': 'Lot IV 68 Antananarivo',
+        'contact': '034 12 345 67',
+        'responsable': 'M. RABE'
+    }
+    
+    produits = [
+        {'nom': 'Produit A', 'quantite': 2, 'prix_unitaire': 50000, 'total': 100000},
+        {'nom': 'Produit B', 'quantite': 1, 'prix_unitaire': 75000, 'total': 75000},
+        {'nom': 'Produit C', 'quantite': 5, 'prix_unitaire': 12000, 'total': 60000}
+    ]
+    
+    total = 235000
+    avance = 100000
+    reste = 135000
+    
+    # Appel de la fonction
+    generer_facture_proforma(
+        client_nom=client_nom,
+        client_info=client_info,
+        produits=produits,
+        date_str="10/12/2024",
+        mode_paiement="Espèces",
+        depot_sortie="Magasin Principal",
+        total=total,
+        avance=avance,
+        reste=reste,
+        commande_id="CMD001"
+    )

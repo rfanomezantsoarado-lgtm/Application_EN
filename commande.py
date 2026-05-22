@@ -575,7 +575,6 @@ class CommandeScreen(Screen):
         )
         _bg(btn_fermer, ACCENT_RED, radius=6)
 
-        btn_box.add_widget(btn_partager)
         btn_box.add_widget(btn_enregistrer)
         btn_box.add_widget(btn_imprimer)
         btn_box.add_widget(btn_fermer)

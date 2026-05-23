@@ -31,7 +31,7 @@ version = 0.1
 requirements = python3,pip,kivy,pillow,requests
 
 # (str) Presplash of the application
-presplash.filename = %(source.dir)s/images/icon.png
+presplash.filename = %(source.dir)s/images/logo.png
 
 # (str) Icon of the application
 icon.filename = %(source.dir)s/images/icon.png

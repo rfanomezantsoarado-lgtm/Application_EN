@@ -1,4 +1,4 @@
-# image_generator.py - Version corrigée
+# image_generator.py - Version corrigée avec polices 12pt
 from PIL import Image, ImageDraw, ImageFont
 import os
 from datetime import datetime
@@ -14,6 +14,9 @@ MM_TO_PX = DPI / 25.4
 # Facteur d'agrandissement des polices (ajustez cette valeur)
 FACTEUR_POLICE = 1.5  # 1.5 = 50% plus grand, 2 = 2x plus grand
 
+# CONVERSION 12pt = 4.233mm
+PT_12_EN_MM = 4.233
+
 def mm_to_pt(mm):
     """Convertit les mm en points avec facteur d'agrandissement"""
     conversion_standard = mm * 2.83465
@@ -26,11 +29,9 @@ def mm_to_px(mm):
 def generer_en_tete(draw, img, width, padding, y):
     """Génère l'en-tête avec logo et texte comme sur l'image"""
 
-        # Charger le logo
-       # En haut du fichier, ajoutez cette constante
+    # Charger le logo
     MARGE_LOGO_GAUCHE_MM = 10  # Ajustez cette valeur (5, 10, 15 mm selon besoin)
 
-    # Puis dans votre code :
     logo = None
     logo_width = 0
     try:
@@ -55,14 +56,13 @@ def generer_en_tete(draw, img, width, padding, y):
         print(f"Erreur chargement logo: {e}")
         logo_width = 0
 
-    # Sous-titre "Vente en gros et détail" en bas du logo
+    # Sous-titre "Vente en gros et détail" en bas du logo - TAILLE 12pt
     try:
-        font_soustitre = ImageFont.truetype(FONT_REGULAR, mm_to_pt(3)) if FONT_REGULAR else ImageFont.load_default()
+        font_soustitre = ImageFont.truetype(FONT_REGULAR, mm_to_pt(PT_12_EN_MM)) if FONT_REGULAR else ImageFont.load_default()
     except:
         font_soustitre = ImageFont.load_default()
 
     # Position du sous-titre centré sous le logo
-    # Ajustez également cette partie pour que le sous-titre suive le décalage du logo
     if logo and logo_width > 0:
         logo_actual_width = logo.width
         marge_gauche_logo = mm_to_px(10)  # Même valeur que plus haut
@@ -71,11 +71,12 @@ def generer_en_tete(draw, img, width, padding, y):
         soustitre_width = bbox_soustitre[2] - bbox_soustitre[0]
         soustitre_x = logo_center_x - (soustitre_width // 2)
         draw.text((soustitre_x, y + logo.height + mm_to_px(1)), "Vente en gros et détail", font=font_soustitre, fill='#000000')
-    # Contact - centré par rapport au logo
+    
+    # Contact - centré par rapport au logo - TAILLE 12pt
     logo_bottom = y + (logo.height if logo else mm_to_px(20))
 
     try:
-        font_contact = ImageFont.truetype(FONT_REGULAR, mm_to_pt(3)) if FONT_REGULAR else ImageFont.load_default()
+        font_contact = ImageFont.truetype(FONT_REGULAR, mm_to_pt(PT_12_EN_MM)) if FONT_REGULAR else ImageFont.load_default()
     except:
         font_contact = ImageFont.load_default()
 
@@ -142,27 +143,24 @@ def generer_infos_client_rectangle(draw, width, padding, y_start, client_nom, cl
                               [rect_x, rect_y, rect_x + rect_width, rect_y + rect_height],
                               rayon=mm_to_px(3),
                               outline='#000000',
-                              width=3)  # Changé de 2 à 3 (contour plus épais)
+                              width=3)
 
-    # Polices - TAILLES CORRIGÉES (plus petites)
-    font_label_size = mm_to_pt(3)   # 3.5mm pour les labels (Client:, Stat:, etc.)
-    font_value_size = mm_to_pt(3)   # 3.5mm pour les valeurs (même taille)
-
+    # Polices - TOUTES EN 12pt (4.233mm)
     try:
-        font_label = ImageFont.truetype(FONT_REGULAR, font_label_size) if FONT_REGULAR else ImageFont.load_default()
-        font_value = ImageFont.truetype(FONT_REGULAR, font_value_size) if FONT_REGULAR else ImageFont.load_default()
+        font_label = ImageFont.truetype(FONT_REGULAR, mm_to_pt(PT_12_EN_MM)) if FONT_REGULAR else ImageFont.load_default()
+        font_value = ImageFont.truetype(FONT_REGULAR, mm_to_pt(PT_12_EN_MM)) if FONT_REGULAR else ImageFont.load_default()
     except:
         font_label = ImageFont.load_default()
         font_value = ImageFont.load_default()
 
     # Position à l'intérieur du rectangle (marge réduite)
-    margin = mm_to_px(3)  # Légèrement augmenté pour plus d'espace
+    margin = mm_to_px(3)
     inner_x = rect_x + margin
     y = rect_y + margin
-    line_height = mm_to_px(5)
+    line_height = mm_to_px(6)  # Augmenté de 5 à 6mm pour 12pt
 
     # Largeur pour la colonne des labels - légèrement augmentée
-    label_width = mm_to_px(28)  # Augmenté de 25 à 28
+    label_width = mm_to_px(28)
 
     # Client
     draw.text((inner_x, y), "Client :", font=font_label, fill='#000000')
@@ -190,7 +188,6 @@ def generer_infos_client_rectangle(draw, width, padding, y_start, client_nom, cl
     # Responsable - AVEC PLUS D'ESPACE
     responsable = client_info.get('responsable', '')
     draw.text((inner_x, y), "Responsable :", font=font_label, fill='#000000')
-    # Augmenté l'espace pour la valeur du responsable (de mm_to_px(15) à mm_to_px(35))
     draw.text((inner_x + mm_to_px(35), y), responsable, font=font_value, fill='#000000')
 
     return rect_y + rect_height
@@ -198,9 +195,9 @@ def generer_infos_client_rectangle(draw, width, padding, y_start, client_nom, cl
 def generer_date(draw, width, padding, y_rectangle_bottom, date_str):
     """Génère la date en dessous du rectangle (à l'extérieur)"""
 
-    font_size = mm_to_pt(3)  # 4mm ≈ 12 points
+    # TAILLE 12pt
     try:
-        font_date = ImageFont.truetype(FONT_REGULAR, font_size) if FONT_REGULAR else ImageFont.load_default()
+        font_date = ImageFont.truetype(FONT_REGULAR, mm_to_pt(PT_12_EN_MM)) if FONT_REGULAR else ImageFont.load_default()
     except:
         font_date = ImageFont.load_default()
 
@@ -236,40 +233,32 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     marge_gauche_droite = mm_to_px(10)  # 1cm = 10mm
 
     # === AJUSTEMENT DES LARGEURS DES COLONNES ===
-    # Calculer la largeur totale disponible (largeur de l'image - marges gauche et droite)
     largeur_disponible = width - (marge_gauche_droite * 2)
 
-    # Redéfinir les largeurs des colonnes en pourcentage de la largeur disponible
-    # Répartition: Désignation 45%, Quantité 15%, Prix Unitaire 20%, Montant 20%
+    # Redéfinir les largeurs des colonnes
     col_widths = {
-        'designation': int(largeur_disponible * 0.35),     # 45% pour la désignation
-        'quantite': int(largeur_disponible * 0.15),        # 15% pour la quantité
-        'prix_unitaire': int(largeur_disponible * 0.20),   # 20% pour le prix unitaire
-        'montant': int(largeur_disponible * 0.30)          # 20% pour le montant
+        'designation': int(largeur_disponible * 0.35),
+        'quantite': int(largeur_disponible * 0.15),
+        'prix_unitaire': int(largeur_disponible * 0.20),
+        'montant': int(largeur_disponible * 0.30)
     }
 
-    # Ajuster pour compenser les arrondis (distribuer les pixels restants)
     somme_widths = sum(col_widths.values())
     difference = largeur_disponible - somme_widths
     if difference != 0:
-        # Ajouter la différence à la colonne désignation (la plus grande)
         col_widths['designation'] += difference
 
-    # Calculer la largeur totale du tableau
     table_width = sum(col_widths.values())
+    table_x = marge_gauche_droite
 
-    # Position horizontale avec marge de 1cm à gauche
-    table_x = marge_gauche_droite  # Commence à 1cm du bord gauche
-
-    # Hauteur des lignes
+    # Hauteur des lignes - AUGMENTÉE pour 12pt
     header_height = mm_to_px(12)  # 12mm
     row_height = mm_to_px(12)     # 12mm
 
-    # Charger les polices
-    font_size = mm_to_pt(3.5)  # Taille de police
+    # Charger les polices - TOUTES EN 12pt
     try:
-        font_header = ImageFont.truetype(FONT_BOLD, font_size) if FONT_BOLD else ImageFont.load_default()
-        font_normal = ImageFont.truetype(FONT_REGULAR, font_size) if FONT_REGULAR else ImageFont.load_default()
+        font_header = ImageFont.truetype(FONT_BOLD, mm_to_pt(PT_12_EN_MM)) if FONT_BOLD else ImageFont.load_default()
+        font_normal = ImageFont.truetype(FONT_REGULAR, mm_to_pt(PT_12_EN_MM)) if FONT_REGULAR else ImageFont.load_default()
     except:
         font_header = ImageFont.load_default()
         font_normal = ImageFont.load_default()
@@ -278,43 +267,39 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     titre_y = y
     num_bon = f"BL-{num_facture}"
 
-    # Calculer la largeur du titre pour le centrer (par rapport au tableau)
     bbox_titre = draw.textbbox((0, 0), f"BON DE LIVRAISON N° {num_bon}", font=font_header)
     titre_width = bbox_titre[2] - bbox_titre[0]
     titre_x = table_x + (table_width - titre_width) // 2
 
     draw.text((titre_x, titre_y), f"BON DE LIVRAISON N° {num_bon}", font=font_header, fill='#000000')
-    y += mm_to_px(10)  # Espace après le titre
+    y += mm_to_px(10)
 
     # === EN-TÊTE DU TABLEAU ===
     header_y = y
 
-    # Dessiner le rectangle de l'en-tête (contour épais)
     draw.rectangle(
         [(table_x, header_y), (table_x + table_width, header_y + header_height)],
         outline='#000000',
         fill=None,
-        width=3  # Bordure épaisse
+        width=3
     )
 
-    # Dessiner les séparateurs verticaux dans l'en-tête
     x_pos = table_x
     for i, (col_name, col_width) in enumerate(col_widths.items()):
         if i < len(col_widths) - 1:
             x_pos += col_width
             draw.line([(x_pos, header_y), (x_pos, header_y + header_height)], fill='#000000', width=2)
 
-    # Texte des colonnes (centré verticalement) avec ajustement du centrage horizontal
     x_offset = table_x
 
-    # Désignation (aligné à gauche)
+    # Désignation
     bbox_design = draw.textbbox((0, 0), "Désignation", font=font_header)
     design_height = bbox_design[3] - bbox_design[1]
     text_y = header_y + (header_height - design_height) // 2
     draw.text((x_offset + mm_to_px(3), text_y), "Désignation", font=font_header, fill='#000000')
     x_offset += col_widths['designation']
 
-    # Qté (centré)
+    # Qté
     bbox_qte = draw.textbbox((0, 0), "Qté", font=font_header)
     qte_height = bbox_qte[3] - bbox_qte[1]
     qte_width = bbox_qte[2] - bbox_qte[0]
@@ -323,7 +308,7 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     draw.text((text_x, text_y), "Qté", font=font_header, fill='#000000')
     x_offset += col_widths['quantite']
 
-    # Prix U (centré)
+    # Prix U
     bbox_prix = draw.textbbox((0, 0), "Prix U", font=font_header)
     prix_height = bbox_prix[3] - bbox_prix[1]
     prix_width = bbox_prix[2] - bbox_prix[0]
@@ -332,7 +317,7 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     draw.text((text_x, text_y), "Prix U", font=font_header, fill='#000000')
     x_offset += col_widths['prix_unitaire']
 
-    # Montant (Ar) (centré)
+    # Montant (Ar)
     bbox_montant = draw.textbbox((0, 0), "Montant (Ar)", font=font_header)
     montant_height = bbox_montant[3] - bbox_montant[1]
     montant_width = bbox_montant[2] - bbox_montant[0]
@@ -343,18 +328,16 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
     y += header_height
 
     # === LIGNES DES PRODUITS ===
-    row_count = max(len(produits), 5)  # Minimum 5 lignes
+    row_count = max(len(produits), 5)
 
     for i in range(row_count):
         row_y = y + (i * row_height)
 
-        # Alternance des couleurs de lignes
         if i % 2 == 0:
             row_fill = '#ffffff'
         else:
             row_fill = '#f5f5f5'
 
-        # Dessiner la ligne avec bordure épaisse
         draw.rectangle(
             [(table_x, row_y), (table_x + table_width, row_y + row_height)],
             fill=row_fill,
@@ -362,28 +345,25 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
             width=2
         )
 
-        # Dessiner les séparateurs verticaux
         x_pos = table_x
         for j, (col_name, col_width) in enumerate(col_widths.items()):
             if j < len(col_widths) - 1:
                 x_pos += col_width
                 draw.line([(x_pos, row_y), (x_pos, row_y + row_height)], fill='#000000', width=2)
 
-        # Remplir avec les données si disponibles
         if i < len(produits):
             p = produits[i]
             x_offset = table_x
 
-            # Désignation (aligné à gauche)
+            # Désignation
             designation = p['nom']
             bbox_design = draw.textbbox((0, 0), designation, font=font_normal)
             design_height = bbox_design[3] - bbox_design[1]
             text_y = row_y + (row_height - design_height) // 2
-            # Utiliser toute la largeur disponible pour la désignation
             draw.text((x_offset + mm_to_px(3), text_y), designation, font=font_normal, fill='#333333')
             x_offset += col_widths['designation']
 
-            # Quantité (centré)
+            # Quantité
             qte_str = str(p['quantite'])
             bbox_qte = draw.textbbox((0, 0), qte_str, font=font_normal)
             qte_height = bbox_qte[3] - bbox_qte[1]
@@ -393,7 +373,7 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
             draw.text((text_x, text_y), qte_str, font=font_normal, fill='#333333')
             x_offset += col_widths['quantite']
 
-            # Prix Unitaire (aligné à droite)
+            # Prix Unitaire
             prix_str = f"{p['prix_unitaire']:,.0f}"
             bbox_prix = draw.textbbox((0, 0), prix_str, font=font_normal)
             prix_height = bbox_prix[3] - bbox_prix[1]
@@ -403,7 +383,7 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
             draw.text((text_x, text_y), prix_str, font=font_normal, fill='#333333')
             x_offset += col_widths['prix_unitaire']
 
-            # Montant (aligné à droite)
+            # Montant
             montant_str = f"{p['total']:,.0f}"
             bbox_montant = draw.textbbox((0, 0), montant_str, font=font_normal)
             montant_height = bbox_montant[3] - bbox_montant[1]
@@ -412,7 +392,6 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
             text_x = x_offset + col_widths['montant'] - montant_width - mm_to_px(3)
             draw.text((text_x, text_y), montant_str, font=font_normal, fill='#333333')
 
-    # Ligne de bordure en bas du tableau
     bottom_y = y + (row_count * row_height)
     draw.line(
         [(table_x, bottom_y), (table_x + table_width, bottom_y)],
@@ -420,12 +399,10 @@ def generer_tableau_bon_livraison(draw, width, padding, y_start, produits, num_f
         width=3
     )
 
-    # Ligne de bordure à gauche et à droite du tableau
     draw.line([(table_x, header_y), (table_x, bottom_y)], fill='#000000', width=3)
     draw.line([(table_x + table_width, header_y), (table_x + table_width, bottom_y)], fill='#000000', width=3)
 
     return bottom_y + mm_to_px(7)
-
 
 def generer_bas_facture_avec_pointilles(draw, width, padding, y_start, total, avance, reste,
                                         mode_paiement, depot_sortie, numero_cheque=""):
@@ -434,24 +411,21 @@ def generer_bas_facture_avec_pointilles(draw, width, padding, y_start, total, av
     espace_1cm = mm_to_px(10)
     y = y_start + espace_1cm
 
-    # Marge gauche et droite de 1cm (10mm)
-    marge_gauche_droite = mm_to_px(10)  # 1cm = 10mm
+    marge_gauche_droite = mm_to_px(10)
 
-    font_size = mm_to_pt(3)  # 4mm ≈ 12 points
-    font_small_size = mm_to_pt(2)  # 3mm ≈ 9 points
-
+    # TOUTES LES POLICES EN 12pt
     try:
-        font_normal = ImageFont.truetype(FONT_REGULAR, font_size)
-        font_bold = ImageFont.truetype(FONT_BOLD, font_size)
-        font_small = ImageFont.truetype(FONT_REGULAR, font_small_size)
+        font_normal = ImageFont.truetype(FONT_REGULAR, mm_to_pt(PT_12_EN_MM))
+        font_bold = ImageFont.truetype(FONT_BOLD, mm_to_pt(PT_12_EN_MM))
+        font_small = ImageFont.truetype(FONT_REGULAR, mm_to_pt(PT_12_EN_MM))
     except:
         font_normal = font_bold = font_small = ImageFont.load_default()
 
-    # Ligne de séparation (avec marges de 1cm)
+    # Ligne de séparation
     draw.line([(marge_gauche_droite, y - mm_to_px(2)), (width - marge_gauche_droite, y - mm_to_px(2))], fill='#dddddd', width=1)
 
     # === GAUCHE ===
-    left_x = marge_gauche_droite  # Commence à 1cm du bord gauche
+    left_x = marge_gauche_droite
     line_height = mm_to_px(8)
 
     draw.text((left_x, y), f"Mode de paiement : {mode_paiement}", font=font_normal, fill='#333333')
@@ -466,11 +440,10 @@ def generer_bas_facture_avec_pointilles(draw, width, padding, y_start, total, av
     draw.text((left_x + mm_to_px(5), y), f"{depot_sortie}", font=font_normal, fill='#333333')
 
     # === DROITE ===
-    right_x = width - marge_gauche_droite  # S'arrête à 1cm du bord droit
+    right_x = width - marge_gauche_droite
     total_y = y_start + espace_1cm + mm_to_px(2)
 
-    # Ajuster la largeur pour les textes à droite (utilisation de toute la largeur disponible)
-    espace_droite = mm_to_px(45)  # Espace pour les libellés à droite
+    espace_droite = mm_to_px(45)
 
     draw.text((right_x - espace_droite, total_y), "Montant Total :", font=font_bold, fill='#333333')
     draw.text((right_x - mm_to_px(3), total_y), f"{total:,.0f} Ar", font=font_bold, fill='#1a237e', anchor='rt')
@@ -490,19 +463,16 @@ def generer_bas_facture_avec_pointilles(draw, width, padding, y_start, total, av
     y_sig = y_apres + mm_to_px(5)
     y_fin = y_sig + mm_to_px(30)
 
-    # Ligne pointillée avec des tirets (entre les marges de 1cm)
     for i in range(marge_gauche_droite, width - marge_gauche_droite, mm_to_px(3)):
         draw.line([(i, y_fin), (i + mm_to_px(2), y_fin)], fill='#999999', width=2)
 
-    # === CACHET/SIGNATURE à droite ===
-    sig_width = mm_to_px(80)  # 80mm de largeur
-    sig_x = width - marge_gauche_droite - sig_width  # Positionné à 1cm du bord droit
+    # === CACHET/SIGNATURE ===
+    sig_width = mm_to_px(80)
+    sig_x = width - marge_gauche_droite - sig_width
 
-    # Ligne pour signature
     draw.text((sig_x + (sig_width // 2) + 40, y_sig + mm_to_px(2)), "Cachet / Signature",
               font=font_small, fill='#000000', anchor='mt')
 
-    # Texte "Merci de votre confiance!" en dessus du tiré (centré entre les marges)
     centre_x = marge_gauche_droite + ((width - (marge_gauche_droite * 2)) // 2)
     draw.text((centre_x, y_fin - mm_to_px(5)), "Merci de votre confiance !",
               font=font_small, fill='#000000', anchor='mt')
@@ -515,7 +485,6 @@ def generer_facture_proforma(client_nom, client_info, produits,
                             numero_cheque=""):
     """Génère la facture proforma complète (300 DPI) et retourne le chemin du fichier"""
 
-    # Générer automatiquement le nom du fichier
     annee = datetime.now().strftime("%Y")
     mois = datetime.now().strftime("%m")
     if not os.path.exists("factures"):
@@ -523,38 +492,28 @@ def generer_facture_proforma(client_nom, client_info, produits,
     filename = f"factures/facture n°_{commande_id} du {mois} {annee}.jpg"
     num_facture = f"{commande_id}/{annee}"
 
-    # Dimensions de l'image (80mm de largeur à 300 DPI)
-    width = mm_to_px(120)   # 80mm = 945 pixels à 300 DPI
-    height = mm_to_px(225) # 297mm (A4) = 3508 pixels à 300 DPI
-    padding = mm_to_px(5)  # 5mm = 59 pixels
+    width = mm_to_px(120)
+    height = mm_to_px(225)
+    padding = mm_to_px(5)
 
-    # Créer l'image blanche
     img = Image.new('RGB', (width, height), 'white')
     draw = ImageDraw.Draw(img)
 
-    # Générer chaque section
-    y_position = mm_to_px(5)  # Marge 5mm
+    y_position = mm_to_px(5)
 
-    # En-tête
     generer_en_tete(draw, img, width, padding, y_position)
-    y_position += mm_to_px(27)  # Espace après l'en-tête
+    y_position += mm_to_px(27)
 
-    # Informations client rectangle
     client_y = generer_infos_client_rectangle(draw, width, padding, y_position, client_nom, client_info)
 
-    # Date (en dessous du rectangle, à l'extérieur)
     date_y = generer_date(draw, width, padding, client_y, date_str)
 
-    # Tableau (commence après la date)
     tableau_y = generer_tableau_bon_livraison(draw, width, padding, date_y, produits, commande_id, annee)
 
-    # Bas de page
     generer_bas_facture_avec_pointilles(draw, width, padding, tableau_y, total, avance, reste,
                                        mode_paiement, depot_sortie, numero_cheque)
 
-    # Sauvegarder avec haute qualité
     img.save(filename, "JPEG", quality=95, dpi=(DPI, DPI))
     print(f"Facture générée avec succès : {filename} (300 DPI)")
 
-    # Retourner le chemin du fichier (string) et non l'objet Image
     return filename

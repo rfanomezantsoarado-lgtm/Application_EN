@@ -514,7 +514,9 @@ def generer_facture_proforma(client_nom, client_info, produits,
     # Générer automatiquement le nom du fichier
     annee = datetime.now().strftime("%Y")
     mois = datetime.now().strftime("%m")
-    filename = f"facture n°_{commande_id} du {mois} {annee}.jpg"
+    if not os.path.exists("factures"):
+        os.makedirs("factures")
+    filename = f"factures/facture n°_{commande_id} du {mois} {annee}.jpg"
     num_facture = f"{commande_id}/{annee}"
 
     # Dimensions de l'image (80mm de largeur à 300 DPI)

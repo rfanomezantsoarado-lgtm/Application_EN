@@ -785,16 +785,6 @@ class HistoriqueCommandeScreen(Screen):
         _bg(btn_enregistrer, ACCENT_GREEN, radius=dp(8))
         btn_enregistrer.bind(on_release=lambda x: self.enregistrer_sur_telephone(chemin_image))
 
-        btn_imprimer = Button(
-            text="IMPRIMER",
-            size_hint=(1, None), height=dp(45),
-            font_size=sp(14), bold=True,
-            background_normal="",
-            background_color=(0, 0, 0, 0),
-            color=TEXT_WHITE
-        )
-        _bg(btn_imprimer, ACCENT_PURPLE, radius=dp(8))
-        btn_imprimer.bind(on_release=lambda x: self.imprimer_image(chemin_image))
 
         btn_fermer = Button(
             text="FERMER",
@@ -807,7 +797,6 @@ class HistoriqueCommandeScreen(Screen):
         _bg(btn_fermer, ACCENT_RED, radius=dp(8))
 
         btn_box.add_widget(btn_enregistrer)
-        btn_box.add_widget(btn_imprimer)
         btn_box.add_widget(btn_fermer)
         content.add_widget(btn_box)
 
@@ -903,22 +892,6 @@ class HistoriqueCommandeScreen(Screen):
             # En cas d'erreur, au moins afficher le chemin
             self.show_message("Info", f"Image disponible à:\n{chemin_image}")
 
-    def imprimer_image(self, chemin_image):
-        """Prépare l'impression au format NB80"""
-        try:
-            if sys.platform == 'win32':
-                os.startfile(chemin_image, "print")
-            elif sys.platform == 'darwin':
-                subprocess.run(['open', chemin_image])
-            else:
-                subprocess.run(['xdg-open', chemin_image])
-            self.show_message(
-                "Impression",
-                f"Ouvrez l'image et utilisez l'impression.\n"
-                "Pour l'impression NB80, réglez le format papier sur 80mm."
-            )
-        except Exception as e:
-            self.show_message("Erreur", f"Erreur d'impression: {e}")
 
     # ═══════════════════════════════════════════════════
     # POPUP PAYER — saisie du montant

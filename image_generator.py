@@ -9,11 +9,15 @@ FONT_BOLD = "arialbd.ttf"   # Chemin vers une police gras
 
 # Constantes pour 300 DPI
 DPI = 300
-MM_TO_PX = DPI / 25.4  # 300 / 25.4 = 11.811 pixels par mm
+MM_TO_PX = DPI / 25.4
+
+# Facteur d'agrandissement des polices (ajustez cette valeur)
+FACTEUR_POLICE = 1.5  # 1.5 = 50% plus grand, 2 = 2x plus grand
+
 def mm_to_pt(mm):
-    """Convertit les mm en points (1 pt = 1/72 pouce = 0.3528 mm)"""
-    # 1 mm = 2.83465 points (car 1 pouce = 25.4 mm = 72 points)
-    return int(mm * 2.83465*5)
+    """Convertit les mm en points avec facteur d'agrandissement"""
+    conversion_standard = mm * 2.83465
+    return int(conversion_standard * FACTEUR_POLICE)
 
 def mm_to_px(mm):
     """Convertit les millimètres en pixels à 300 DPI"""

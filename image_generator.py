@@ -62,6 +62,7 @@ def generer_en_tete(draw, img, width, padding, y):
 
     logo = None
     logo_width = 0
+    logo_y_position = y  # Position Y du logo
     try:
         logo_path = "images/logo.png"
         if os.path.exists(logo_path):
@@ -111,7 +112,7 @@ def generer_en_tete(draw, img, width, padding, y):
 
     draw.text((contact_x, contact_y), contact_text, font=font_contact, fill='#000000')
 
-    return logo_width
+    return logo_width, y  # Retourne la position Y du logo (son haut)
 
 def dessiner_rectangle_arrondi(draw, xy, rayon, fill=None, outline='#000000', width=3):
     """Dessine un rectangle avec des coins arrondis"""
@@ -128,11 +129,8 @@ def dessiner_rectangle_arrondi(draw, xy, rayon, fill=None, outline='#000000', wi
     draw.line([(x1, y1 + rayon_px), (x1, y2 - rayon_px)], fill=outline, width=width)
     draw.line([(x2, y1 + rayon_px), (x2, y2 - rayon_px)], fill=outline, width=width)
 
-def generer_infos_client_rectangle(draw, width, client_nom, client_info):
-    """Génère un rectangle avec les informations client - sans espacement supplémentaire"""
-
-    # Marge en haut de 1cm
-    marge_haut_px = mm_to_px(10)
+def generer_infos_client_rectangle(draw, width, client_nom, client_info, y_position_logo_top):
+    """Génère un rectangle avec les informations client - aligné avec le haut du logo"""
 
     # Position horizontale à 6cm (60mm) du bord gauche
     position_horizontale_mm = 60
@@ -140,9 +138,10 @@ def generer_infos_client_rectangle(draw, width, client_nom, client_info):
 
     # Dimensions du rectangle
     rect_width = mm_to_px(55)   # Largeur
-    rect_height = mm_to_px(48)  # Hauteur
+    rect_height = mm_to_px(40)  # Hauteur
 
-    rect_y = marge_haut_px
+    # Position verticale identique à la position HAUT du logo
+    rect_y = y_position_logo_top
 
     # Dessiner le rectangle
     dessiner_rectangle_arrondi(draw,
@@ -158,7 +157,7 @@ def generer_infos_client_rectangle(draw, width, client_nom, client_info):
     margin = mm_to_px(4)
     inner_x = rect_x + margin
     y = rect_y + margin
-    line_height = mm_to_px(9)
+    line_height = mm_to_px(7)  # Interligne réduit
 
     # Client - pas d'espacement supplémentaire
     label_text = "Client :"
@@ -259,14 +258,14 @@ def generer_tableau_bon_livraison(draw, width, y_start, produits, num_facture):
     font_header = get_font(TAILLE_TEXTE_GRAND, bold=True)
     font_normal = get_font(TAILLE_TEXTE_NORMAL, bold=True)
 
-    # Titre centré
+    # Titre centré - PLUS D'ESPACE AVANT (y_start directement)
     titre_y = y
     bbox_titre = draw.textbbox((0, 0), f"BON DE LIVRAISON N° {num_facture}", font=font_header)
     titre_width = bbox_titre[2] - bbox_titre[0]
     titre_x = table_x + (table_width - titre_width) // 2
 
     draw.text((titre_x, titre_y), f"BON DE LIVRAISON N° {num_facture}", font=font_header, fill='#000000')
-    y += mm_to_px(15)
+    y += mm_to_px(8)  # Espace réduit après le titre
 
     # En-tête du tableau
     header_y = y
@@ -389,8 +388,12 @@ def generer_bas_facture(draw, width, y_start, total, avance, reste,
 
     font_normal = get_font(TAILLE_TEXTE_NORMAL, bold=True)
     font_bold = get_font(TAILLE_TEXTE_GRAND, bold=True)
+    font_small = get_font(TAILLE_TEXTE_PETIT, bold=False)
 
-    line_height = mm_to_px(12)
+    line_height = mm_to_px(10)  # Interligne réduit
+
+    # Marge gauche pour les informations (1cm)
+    left_x = mm_to_px(10)
 
     # MONTANTS alignés à droite avec ESPACE FIXE
     marge_droite_px = mm_to_px(10)
@@ -399,21 +402,37 @@ def generer_bas_facture(draw, width, y_start, total, avance, reste,
     # Largeur FIXE pour tous les libellés (pour alignement parfait)
     LABEL_WIDTH = mm_to_px(30)  # Tous les libellés ont la même largeur
 
-    # Montant Total
+    # Montant Total (à droite)
     label_text = "Montant Total :"
     value_text = f"{total:,.0f} Ar" if total else "0 Ar"
     draw.text((right_x - LABEL_WIDTH, y), label_text, font=font_bold, fill='#333333', anchor='rt')
     draw.text((right_x, y), value_text, font=font_bold, fill='#1a237e', anchor='rt')
+
+    # Mode de paiement (à gauche avec valeur en dessous)
+    label_text = "Mode de paiement :"
+    value_text = mode_paiement if mode_paiement else "Non spécifié"
+    draw.text((left_x, y), label_text, font=font_normal, fill='#333333')
+    # Valeur en dessous du libellé
+    draw.text((left_x+15, y + mm_to_px(5)), value_text, font=font_small, fill='#333333')
+
     y += line_height
 
-    # Montant payé
+    # Montant payé (à droite)
     label_text = "Montant payé :"
     value_text = f"{avance:,.0f} Ar" if avance else "0 Ar"
     draw.text((right_x - LABEL_WIDTH, y), label_text, font=font_bold, fill='#333333', anchor='rt')
     draw.text((right_x, y), value_text, font=font_bold, fill='#2e7d32', anchor='rt')
+
+    # Dépôt de sortie (à gauche avec valeur en dessous)
+    label_text = "Dépôt de sortie :"
+    value_text = depot_sortie if depot_sortie else "Non spécifié"
+    draw.text((left_x, y), label_text, font=font_normal, fill='#333333')
+    # Valeur en dessous du libellé
+    draw.text((left_x+15, y + mm_to_px(5)), value_text, font=font_small, fill='#333333')
+
     y += line_height
 
-    # Reste à payer
+    # Reste à payer (à droite)
     reste_color = '#d32f2f' if (reste and reste > 0) else '#2e7d32'
     label_text = "Reste à payer :"
     value_text = f"{reste:,.0f} Ar" if reste else "0 Ar"
@@ -421,29 +440,15 @@ def generer_bas_facture(draw, width, y_start, total, avance, reste,
     draw.text((right_x, y), value_text, font=font_bold, fill=reste_color, anchor='rt')
     y += line_height
 
-    # Mode de paiement
-    label_text = "Mode de paiement :"
-    value_text = mode_paiement if mode_paiement else "Non spécifié"
-    draw.text((right_x - LABEL_WIDTH, y), label_text, font=font_normal, fill='#333333', anchor='rt')
-    draw.text((right_x, y), value_text, font=font_normal, fill='#333333', anchor='rt')
-    y += line_height
-
-    # Dépôt de sortie
-    label_text = "Dépôt de sortie :"
-    value_text = depot_sortie if depot_sortie else "Non spécifié"
-    draw.text((right_x - LABEL_WIDTH, y), label_text, font=font_normal, fill='#333333', anchor='rt')
-    draw.text((right_x, y), value_text, font=font_normal, fill='#333333', anchor='rt')
-    y += line_height
-
     # Position Y après les montants
-    y_final = y + mm_to_px(8)
+    y_final = y + mm_to_px(10)
 
     # ===== CACHET / SIGNATURE =====
+    # Position à droite avec marge de 2cm (20mm) du bord droit en bas de reste à payer
+    marge_sig_droite_mm = 15
+    sig_width = mm_to_px(40)
+    sig_x = width - mm_to_px(marge_sig_droite_mm) - sig_width
     y_sig = y_final
-
-    # Position à droite pour la signature
-    sig_width = mm_to_px(80)
-    sig_x = width - marge_droite_px - sig_width
 
     # Texte "Cachet / Signature"
     font_sig = get_font(TAILLE_SIGNATURE, bold=True)
@@ -453,7 +458,7 @@ def generer_bas_facture(draw, width, y_start, total, avance, reste,
     # Texte "Merci de votre confiance !" centré en bas
     font_merci = get_font(TAILLE_TEXTE_GRAND, bold=True)
     draw.text((width // 2, y_sig + mm_to_px(20)), "Merci de votre confiance !",
-              font=font_merci, fill='#1a237e', anchor='mt')
+              font=font_merci, fill='#000000', anchor='mt')
 
     return y_sig + mm_to_px(35)
 
@@ -476,14 +481,14 @@ def generer_facture_proforma(client_nom, client_info, produits,
     img = Image.new('RGB', (width, height), 'white')
     draw = ImageDraw.Draw(img)
 
-    # Position de départ pour le logo
-    y_position = mm_to_px(10)
+    # Marge haute de 70px
+    y_position = mm_to_px(20) + 80
 
-    # En-tête avec logo
-    generer_en_tete(draw, img, width, padding, y_position)
+    # En-tête avec logo et récupération de la position HAUT du logo
+    logo_width, logo_top_y = generer_en_tete(draw, img, width, padding, y_position)
 
-    # Rectangle client (position à 6cm, largeur réduite)
-    client_y = generer_infos_client_rectangle(draw, width, client_nom, client_info)
+    # Rectangle client avec la position HAUT du logo comme référence
+    client_y = generer_infos_client_rectangle(draw, width, client_nom, client_info, logo_top_y)
 
     # Date (sous le rectangle client)
     date_y = generer_date(draw, width, client_y, date_str)

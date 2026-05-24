@@ -555,16 +555,6 @@ class CommandeScreen(Screen):
         _bg(btn_enregistrer, ACCENT_GREEN, radius=6)
         btn_enregistrer.bind(on_release=lambda x: self.enregistrer_sur_telephone(chemin_image))
 
-        btn_imprimer = Button(
-            text="IMPRIMER",
-            size_hint=(1, None), height=38,
-            font_size=12, bold=True,
-            background_normal="",
-            background_color=(0, 0, 0, 0),
-            color=TEXT_WHITE
-        )
-        _bg(btn_imprimer, ACCENT_PURPLE, radius=6)
-        btn_imprimer.bind(on_release=lambda x: self.imprimer_image(chemin_image))
 
         btn_fermer = Button(
             text="FERMER",
@@ -577,7 +567,6 @@ class CommandeScreen(Screen):
         _bg(btn_fermer, ACCENT_RED, radius=6)
 
         btn_box.add_widget(btn_enregistrer)
-        btn_box.add_widget(btn_imprimer)
         btn_box.add_widget(btn_fermer)
         content.add_widget(btn_box)
 
@@ -643,43 +632,7 @@ class CommandeScreen(Screen):
             # En cas d'erreur, au moins afficher le chemin
             self.show_message("Info", f"Image disponible à:\n{chemin_image}")
 
-    def imprimer_image(self, chemin_image):
-        """Partage l'image pour impression via Android Share Intent"""
-        try:
-            if platform == 'android':
-                # Classes Android nécessaires
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                Intent = autoclass('android.content.Intent')
-                Uri = autoclass('android.net.Uri')
-                File = autoclass('java.io.File')
-                
-                # Créer l'intent de partage
-                intent = Intent()
-                intent.setAction(Intent.ACTION_SEND)
-                intent.setType("image/png")
-                
-                # Ajouter l'image
-                file = File(chemin_image)
-                uri = Uri.fromFile(file)
-                intent.putExtra(Intent.EXTRA_STREAM, uri)
-                
-                # Démarrer le share sheet
-                currentActivity = PythonActivity.mActivity
-                chooser = Intent.createChooser(intent, "Partager / Imprimer")
-                currentActivity.startActivity(chooser)
-                
-                self.show_message(
-                    "Partage",
-                    "Choisissez une application pour imprimer ou partager l'image."
-                )
-            else:
-                # Comportement Desktop
-                if sys.platform == 'win32':
-                    os.startfile(chemin_image)
-                else:
-                    subprocess.run(['xdg-open', chemin_image])
-        except Exception as e:
-            self.show_message("Erreur", f"Erreur: {e}")
+    
 
     # ═══════════════════════════════════════════════════════════
     # MÉTHODES UTILITAIRES

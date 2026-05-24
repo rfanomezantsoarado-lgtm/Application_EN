@@ -441,7 +441,7 @@ def generer_bas_facture(draw, width, y_start, total, avance, reste,
     y += line_height
 
     # Position Y après les montants
-    y_final = y + mm_to_px(10)
+    y_final = y
 
     # ===== CACHET / SIGNATURE =====
     # Position à droite avec marge de 2cm (20mm) du bord droit en bas de reste à payer
@@ -482,7 +482,7 @@ def generer_facture_proforma(client_nom, client_info, produits,
     draw = ImageDraw.Draw(img)
 
     # Marge haute de 70px
-    y_position = mm_to_px(20) + 80
+    y_position = mm_to_px(20) + 130
 
     # En-tête avec logo et récupération de la position HAUT du logo
     logo_width, logo_top_y = generer_en_tete(draw, img, width, padding, y_position)

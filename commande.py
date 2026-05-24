@@ -644,21 +644,42 @@ class CommandeScreen(Screen):
             self.show_message("Info", f"Image disponible à:\n{chemin_image}")
 
     def imprimer_image(self, chemin_image):
-        """Prépare l'impression au format NB80"""
+        """Partage l'image pour impression via Android Share Intent"""
         try:
-            if sys.platform == 'win32':
-                os.startfile(chemin_image, "print")
-            elif sys.platform == 'darwin':
-                subprocess.run(['open', chemin_image])
+            if platform == 'android':
+                # Classes Android nécessaires
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                Intent = autoclass('android.content.Intent')
+                Uri = autoclass('android.net.Uri')
+                File = autoclass('java.io.File')
+                
+                # Créer l'intent de partage
+                intent = Intent()
+                intent.setAction(Intent.ACTION_SEND)
+                intent.setType("image/png")
+                
+                # Ajouter l'image
+                file = File(chemin_image)
+                uri = Uri.fromFile(file)
+                intent.putExtra(Intent.EXTRA_STREAM, uri)
+                
+                # Démarrer le share sheet
+                currentActivity = PythonActivity.mActivity
+                chooser = Intent.createChooser(intent, "Partager / Imprimer")
+                currentActivity.startActivity(chooser)
+                
+                self.show_message(
+                    "Partage",
+                    "Choisissez une application pour imprimer ou partager l'image."
+                )
             else:
-                subprocess.run(['xdg-open', chemin_image])
-            self.show_message(
-                "Impression",
-                f"Ouvrez l'image et utilisez l'impression.\n"
-                "Pour l'impression NB80, réglez le format papier sur 80mm."
-            )
+                # Comportement Desktop
+                if sys.platform == 'win32':
+                    os.startfile(chemin_image)
+                else:
+                    subprocess.run(['xdg-open', chemin_image])
         except Exception as e:
-            self.show_message("Erreur", f"Erreur d'impression: {e}")
+            self.show_message("Erreur", f"Erreur: {e}")
 
     # ═══════════════════════════════════════════════════════════
     # MÉTHODES UTILITAIRES

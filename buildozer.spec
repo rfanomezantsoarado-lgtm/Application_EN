@@ -24,14 +24,13 @@ source.exclude_dirs = tests, bin, venv, .git, __pycache__
 # (str) Application versioning
 version = 0.1
 
-# (list) Application requirements - CORRECTION ICI
 # Note: sqlite3 est inclus par défaut, pas besoin de le spécifier
 # android, pyjnius sont des dépendances internes de p4a
 # reportlab nécessite PIL
 requirements = python3,pip,kivy,pillow,requests
 
 # (str) Presplash of the application
-presplash.filename = %(source.dir)s/images/logo.png
+presplash.filename = %(source.dir)s/images/background.png
 
 # (str) Icon of the application
 icon.filename = %(source.dir)s/images/icon.png

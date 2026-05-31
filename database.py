@@ -16,73 +16,97 @@ def is_android():
         return True
     except ImportError:
         pass
-    
+
     # Vérifier les chemins spécifiques Android
     if os.path.exists('/sdcard') or os.path.exists('/storage/emulated/0'):
         if os.path.exists('/system/build.prop'):
             return True
-    
+
     # Vérifier le chemin du fichier
     if '/data/data/' in os.path.abspath(__file__):
         return True
-    
+
     return False
 
-def get_db_path():
-    """Retourne le chemin absolu de la base de données dans le stockage interne"""
+def get_storage_dir():
+    """Retourne le répertoire de stockage dans /Pictures/BDD"""
     if is_android():
-        # Utiliser le stockage interne de l'application (toujours accessible)
-        try:
-            from android.storage import app_storage_path
-            db_dir = app_storage_path()
-        except:
-            # Fallback si le module n'est pas disponible
-            db_dir = '/data/data/org.enapp.enapp/files'
-        
-        # Créer le dossier s'il n'existe pas
-        if not os.path.exists(db_dir):
-            try:
-                os.makedirs(db_dir, exist_ok=True)
-                print(f"Dossier créé : {db_dir}")
-            except Exception as e:
-                print(f"Erreur création dossier: {e}")
-        
-        db_path = os.path.join(db_dir, 'gestion_clients.db')
-        
-        # Vérifier si une ancienne base existe dans Pictures
-        old_db_paths = [
-            "/sdcard/Pictures/BDD/gestion_clients.db",
-            "/sdcard/Pictures/gestion_clients.db",
-            "/storage/emulated/0/Pictures/BDD/gestion_clients.db",
-            "/storage/emulated/0/Pictures/gestion_clients.db"
+        # Utiliser le dossier /Pictures/BDD
+        possible_paths = [
+            "/sdcard/Pictures/BDD",
+            "/storage/emulated/0/Pictures/BDD",
+            "/sdcard/BDD",
+            "/storage/emulated/0/BDD"
         ]
         
-        for old_path in old_db_paths:
-            if os.path.exists(old_path) and not os.path.exists(db_path):
-                try:
-                    shutil.copy2(old_path, db_path)
-                    print(f"Base existante copiée de {old_path} vers {db_path}")
-                    break
-                except Exception as e:
-                    print(f"Erreur copie base existante: {e}")
+        storage_dir = None
+        for path in possible_paths:
+            try:
+                os.makedirs(path, exist_ok=True)
+                # Tester l'écriture
+                test_file = os.path.join(path, "test_write.txt")
+                with open(test_file, 'w') as f:
+                    f.write("test")
+                os.remove(test_file)
+                storage_dir = path
+                print(f"Dossier de stockage trouvé : {storage_dir}")
+                break
+            except Exception as e:
+                print(f"Impossible d'utiliser {path}: {e}")
+                continue
+        
+        if not storage_dir:
+            # Fallback vers le stockage interne de l'application
+            try:
+                from android.storage import app_storage_path
+                storage_dir = os.path.join(app_storage_path(), 'BDD')
+                os.makedirs(storage_dir, exist_ok=True)
+                print(f"Fallback stockage (interne) : {storage_dir}")
+            except:
+                storage_dir = '/data/data/org.enapp.enapp/files/BDD'
+                os.makedirs(storage_dir, exist_ok=True)
+                print(f"Fallback stockage (interne2) : {storage_dir}")
+        
+        return storage_dir
     else:
-        # Pour PC/Mac/Linux - utiliser le dossier local
-        db_path = 'gestion_clients.db'
+        # Pour PC/Mac/Linux
+        storage_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'BDD')
+        os.makedirs(storage_dir, exist_ok=True)
+        return storage_dir
 
+def get_db_path():
+    """Retourne le chemin absolu de la base de données dans /Pictures/BDD"""
+    storage_dir = get_storage_dir()
+    db_path = os.path.join(storage_dir, 'gestion_clients.db')
+    
     print(f"Base de données utilisée : {db_path}")
     return db_path
 
+def get_backup_dir():
+    """Retourne le dossier de sauvegarde dans /Pictures/BDD/Backups"""
+    storage_dir = get_storage_dir()
+    backup_dir = os.path.join(storage_dir, 'Backups')
+    
+    try:
+        os.makedirs(backup_dir, exist_ok=True)
+        print(f"Dossier sauvegarde : {backup_dir}")
+    except Exception as e:
+        print(f"Erreur création dossier sauvegarde: {e}")
+        
+    return backup_dir
+
 def migrate_database_if_needed():
-    """Migre la base de données si nécessaire"""
+    """Migre la base de données si nécessaire (pour compatibilité)"""
     if is_android():
         new_path = get_db_path()
         
-        # Vérifier les anciens emplacements
+        # Vérifier les anciens emplacements possibles
         old_paths = [
-            "/sdcard/Pictures/BDD/gestion_clients.db",
+            "/sdcard/Pictures/BDD_Backups/gestion_clients.db",
             "/sdcard/Pictures/gestion_clients.db",
             "/storage/emulated/0/Pictures/BDD/gestion_clients.db",
-            "/storage/emulated/0/Pictures/gestion_clients.db"
+            "/storage/emulated/0/Pictures/gestion_clients.db",
+            "/data/data/org.enapp.enapp/files/gestion_clients.db"
         ]
         
         for old_path in old_paths:
@@ -99,7 +123,7 @@ def migrate_database_if_needed():
 def get_db_connection():
     """Établit et retourne une connexion à la base de données"""
     migrate_database_if_needed()
-    
+
     db_path = get_db_path()
 
     # Créer le dossier parent s'il n'existe pas
@@ -131,6 +155,7 @@ def verify_database_location():
     print(f"  - Existe : {'Oui' if exists else 'Non'}")
     print(f"  - Taille : {size:,} octets" if exists else "  - Taille : N/A")
     print(f"  - Plateforme : {'Android' if is_android() else 'PC/Mac/Linux'}")
+    print(f"  - Type : Mémoire interne (/Pictures/BDD)")
 
     if exists:
         # Vérifier si le fichier est accessible en écriture
@@ -214,37 +239,11 @@ def init_database():
         return False
 
 # ===================================================
-# SAUVEGARDE POUR ANDROID (STOCKAGE INTERNE)
+# SAUVEGARDE DANS /Pictures/BDD/Backups
 # ===================================================
 
-def get_backup_dir():
-    """Retourne le dossier de sauvegarde dans le stockage interne"""
-    if is_android():
-        # Utiliser le stockage interne de l'application pour les sauvegardes
-        try:
-            from android.storage import app_storage_path
-            backup_dir = os.path.join(app_storage_path(), 'Backups')
-            os.makedirs(backup_dir, exist_ok=True)
-            print(f"Dossier sauvegarde (interne) : {backup_dir}")
-            return backup_dir
-        except:
-            # Fallback vers un dossier dans les fichiers de l'application
-            backup_dir = '/data/data/org.enapp.enapp/files/Backups'
-            os.makedirs(backup_dir, exist_ok=True)
-            print(f"Dossier sauvegarde (fallback) : {backup_dir}")
-            return backup_dir
-    else:
-        # Pour PC/Mac/Linux
-        if platform.system() == 'Windows':
-            backup_dir = os.path.join(os.path.expanduser("~"), "Desktop", "ENApp_Backups")
-        else:
-            backup_dir = os.path.join(os.path.expanduser("~"), "Documents", "ENApp_Backups")
-        os.makedirs(backup_dir, exist_ok=True)
-        print(f"Dossier sauvegarde PC : {backup_dir}")
-        return backup_dir
-
 def sauvegarder_base_donnees():
-    """Sauvegarde la base de données dans le stockage interne"""
+    """Sauvegarde la base de données dans /Pictures/BDD/Backups"""
     try:
         backup_dir = get_backup_dir()
 
@@ -273,6 +272,7 @@ def sauvegarder_base_donnees():
             print(f"Sauvegarde créée : {backup_path}")
             print(f"   Taille : {taille:,} octets")
             print(f"   Date : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            print(f"   Emplacement : /Pictures/BDD/Backups")
             return backup_path
         else:
             print("Échec de création de la sauvegarde")
@@ -285,7 +285,7 @@ def sauvegarder_base_donnees():
         return None
 
 def restaurer_derniere_sauvegarde():
-    """Restaure la dernière sauvegarde"""
+    """Restaure la dernière sauvegarde depuis /Pictures/BDD/Backups"""
     try:
         backup_dir = get_backup_dir()
 
@@ -338,7 +338,7 @@ def restaurer_derniere_sauvegarde():
         return False
 
 def lister_sauvegardes():
-    """Liste toutes les sauvegardes disponibles avec leurs informations"""
+    """Liste toutes les sauvegardes disponibles dans /Pictures/BDD/Backups"""
     try:
         backup_dir = get_backup_dir()
 
@@ -357,7 +357,8 @@ def lister_sauvegardes():
                             'nom': f,
                             'chemin': chemin,
                             'taille': taille,
-                            'date': date_modif
+                            'date': date_modif,
+                            'emplacement': '/Pictures/BDD/Backups'
                         })
                     except Exception as e:
                         print(f"Erreur lecture fichier {f}: {e}")
@@ -388,28 +389,40 @@ def supprimer_sauvegarde(chemin):
         print(f"Erreur suppression : {e}")
         return False
 
-def exporter_sauvegarde_vers_stockage_externe(chemin_sauvegarde):
-    """Exporte une sauvegarde vers le stockage externe (Pictures) pour que l'utilisateur puisse y accéder"""
-    if not is_android():
-        print("Exportation uniquement disponible sur Android")
-        return False
+def get_storage_info():
+    """Retourne des informations sur l'espace de stockage utilisé"""
+    storage_dir = get_storage_dir()
+    backup_dir = get_backup_dir()
     
-    try:
-        # Créer le dossier dans Pictures
-        export_dir = "/sdcard/Pictures/ENApp_Sauvegardes"
-        os.makedirs(export_dir, exist_ok=True)
-        
-        # Nom du fichier
-        nom_fichier = os.path.basename(chemin_sauvegarde)
-        export_path = os.path.join(export_dir, nom_fichier)
-        
-        # Copier la sauvegarde
-        shutil.copy2(chemin_sauvegarde, export_path)
-        print(f"Sauvegarde exportée vers : {export_path}")
-        return export_path
-    except Exception as e:
-        print(f"Erreur exportation : {e}")
-        return False
+    total_size = 0
+    file_count = 0
+    
+    # Calculer la taille de tous les fichiers dans le répertoire
+    if os.path.exists(storage_dir):
+        for root, dirs, files in os.walk(storage_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                try:
+                    total_size += os.path.getsize(file_path)
+                    file_count += 1
+                except:
+                    pass
+    
+    info = {
+        'storage_dir': storage_dir,
+        'backup_dir': backup_dir,
+        'file_count': file_count,
+        'total_size': total_size,
+        'total_size_mb': total_size / (1024 * 1024)
+    }
+    
+    print(f"\nInformations stockage /Pictures/BDD :")
+    print(f"  - Dossier principal : {storage_dir}")
+    print(f"  - Dossier sauvegardes : {backup_dir}")
+    print(f"  - Nombre de fichiers : {file_count}")
+    print(f"  - Taille totale : {total_size:,} octets ({info['total_size_mb']:.2f} MB)")
+    
+    return info
 
 # ===================================================
 # FONCTIONS UTILITAIRES
@@ -426,7 +439,8 @@ def get_database_info():
         'size': os.path.getsize(db_path) if exists else 0,
         'directory': os.path.dirname(db_path),
         'writable': False,
-        'platform': 'Android' if is_android() else 'PC'
+        'platform': 'Android' if is_android() else 'PC',
+        'storage_type': '/Pictures/BDD'
     }
 
     if exists:

@@ -39,7 +39,7 @@ icon.filename = %(source.dir)s/images/icon.png
 orientation = portrait
 
 # (list) Permissions
-android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,INTERNET,BLUETOOTH,BLUETOOTH_ADMIN
+android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE
 
 # (int) Target Android API
 android.api = 33
